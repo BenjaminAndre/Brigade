@@ -13,6 +13,9 @@ import com.brigade.content.ContentItem
 import com.brigade.content.ContentKind
 import com.brigade.content.ContentPath
 import com.brigade.content.ContentRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,6 +44,12 @@ data class BrowsingState(
     val entries: List<ContentItem> = emptyList(),
     val loading: Boolean = false,
     val error: BrowsingError? = null,
+
+    /**
+     * Each note's thumbnail: the image recalling it would present. A note is absent until it
+     * has been read, and stays absent when it links no image — both show as the filename.
+     */
+    val noteImages: Map<ContentId, ContentId> = emptyMap(),
 ) {
     val currentFolder: ContentId? get() = stack.lastOrNull()?.id
     val canGoUp: Boolean get() = stack.size > 1
@@ -64,6 +73,8 @@ class GmViewModel(
 
     private val _browsing = MutableStateFlow(BrowsingState())
     val browsing: StateFlow<BrowsingState> = _browsing.asStateFlow()
+
+    private var loadJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -142,13 +153,30 @@ class GmViewModel(
     private fun reload(force: Boolean = false) {
         val repository = repositoryFlow.value ?: return
         val folder = _browsing.value.currentFolder ?: return
+        val folderPath = _browsing.value.folderPath
 
-        viewModelScope.launch {
+        // One load at a time. Without this, leaving a folder before its notes were all read
+        // would keep reading them — and a slow listing could land after a newer one.
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _browsing.update { it.copy(loading = true, error = null) }
             val entries = runCatching { repository.children(folder, refresh = force) }
+            // runCatching also catches the cancellation from a newer load. Stop here rather
+            // than reporting it as an unreadable folder.
+            ensureActive()
+
             _browsing.update { state ->
                 entries.fold(
-                    onSuccess = { state.copy(entries = it, loading = false, error = null) },
+                    onSuccess = { listed ->
+                        val ids = listed.mapTo(HashSet()) { it.id }
+                        state.copy(
+                            entries = listed,
+                            loading = false,
+                            error = null,
+                            // Kept across a refresh, so thumbnails do not blink out and back.
+                            noteImages = state.noteImages.filterKeys { it in ids },
+                        )
+                    },
                     onFailure = {
                         state.copy(entries = emptyList(), loading = false, error = BrowsingError.Unavailable)
                     },
@@ -156,6 +184,40 @@ class GmViewModel(
             }
             savedState[KEY_LOCATION] = ArrayList(_browsing.value.folderNames)
             savedState[KEY_LOCATION_ROOT] = repository.rootId.value
+
+            entries.getOrNull()?.let { loadNoteImages(repository, it, folderPath) }
+        }
+    }
+
+    /**
+     * Reads the folder's notes for their thumbnails, one after another, after the grid is
+     * already on screen with their filenames.
+     *
+     * Only this folder's notes — never the tree — and in grid order, so the top of the grid
+     * fills first. Read again on every visit: notes change in Obsidian beside Brigade, and a
+     * folder of notes is a few small files.
+     */
+    private suspend fun loadNoteImages(
+        repository: ContentRepository,
+        entries: List<ContentItem>,
+        folderPath: ContentPath,
+    ) {
+        entries.filter { it.kind == ContentKind.Markdown }.forEach { note ->
+            val image = runCatching {
+                repository.readNote(note)?.let { repository.firstImage(it, folderPath) }
+            }.getOrNull()
+            currentCoroutineContext().ensureActive()
+
+            _browsing.update { state ->
+                state.copy(
+                    noteImages = if (image != null) {
+                        state.noteImages + (note.id to image.id)
+                    } else {
+                        // A note edited since the last visit may no longer link an image.
+                        state.noteImages - note.id
+                    },
+                )
+            }
         }
     }
 

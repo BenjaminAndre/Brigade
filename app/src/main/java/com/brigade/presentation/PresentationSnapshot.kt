@@ -1,6 +1,7 @@
 package com.brigade.presentation
 
 import com.brigade.content.ContentId
+import com.brigade.content.ContentPath
 
 /**
  * [PresentationState] flattened to primitives, for surviving process death.
@@ -16,6 +17,11 @@ data class PresentationSnapshot(
     val imageId: String?,
     val scaling: String,
     val liveSlot: Int?,
+    /**
+     * [Scene.origin], so a relaunch mid-session still knows which note is on screen. Without
+     * it, leaving INFO back to the restored picture would go unrecorded in the recap.
+     */
+    val originPath: String? = null,
 )
 
 interface SnapshotStore {
@@ -27,6 +33,7 @@ fun PresentationState.toSnapshot(): PresentationSnapshot = PresentationSnapshot(
     imageId = (scene.visual.source as? VisualSource.Image)?.id?.value,
     scaling = scene.visual.scaling.name,
     liveSlot = liveSlot?.index,
+    originPath = scene.origin?.value,
 )
 
 /**
@@ -45,6 +52,7 @@ fun PresentationSnapshot.toState(startInInfo: Boolean): PresentationState {
         scene = Scene(
             mode = if (startInInfo) SceneMode.Info else SceneMode.Visual,
             visual = VisualPresentation(source = source, scaling = scalingMode),
+            origin = originPath?.let(::ContentPath),
         ),
         // `info` is deliberately absent: the panel is derived from Campagne.md, which the
         // application graph loads separately. Until it does, INFO mode projects to black —

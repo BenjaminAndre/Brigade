@@ -17,8 +17,8 @@ import com.brigade.content.ContentId
  * twice, in two windows, and any of it could differ between them.
  *
  * Frame is also the ONLY resolved projection of presentation state. Nothing else may be
- * duplicated into it — it already restates [ScalingMode], which is a cost worth paying
- * once and not twice.
+ * duplicated into it — it already restates the picture's framing, [ScalingMode] and
+ * [Viewport], which is the cost of the renderer reading nothing but a Frame.
  */
 sealed interface Frame {
 
@@ -31,7 +31,11 @@ sealed interface Frame {
      */
     data object Black : Frame
 
-    data class Picture(val id: ContentId, val scaling: ScalingMode) : Frame
+    data class Picture(
+        val id: ContentId,
+        val scaling: ScalingMode,
+        val viewport: Viewport = Viewport.FULL,
+    ) : Frame
 
     /**
      * Full-screen campaign info. **Replaces** the picture; it is not an overlay.
@@ -55,6 +59,14 @@ fun PresentationState.frame(): Frame = when (scene.mode) {
 
     SceneMode.Visual -> when (val source = scene.visual.source) {
         VisualSource.None -> Frame.Black
-        is VisualSource.Image -> Frame.Picture(source.id, scene.visual.scaling)
+        is VisualSource.Image -> Frame.Picture(source.id, scene.visual.scaling, scene.visual.viewport)
     }
 }
+
+/**
+ * The same frame with its pan and zoom set aside.
+ *
+ * What transitions compare. Reframing a picture is not a change of picture: a pinch reports a
+ * step per input event, and dissolving on each would wash the map into itself continuously.
+ */
+fun Frame.unframed(): Frame = if (this is Frame.Picture) copy(viewport = Viewport.FULL) else this

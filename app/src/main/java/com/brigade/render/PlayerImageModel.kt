@@ -5,6 +5,8 @@ import coil3.request.ImageRequest
 import coil3.size.Scale
 import coil3.size.Size
 import com.brigade.content.ContentId
+import com.brigade.presentation.Viewport
+import kotlin.math.roundToInt
 
 /**
  * Builds the Coil request that BOTH render targets use for a given piece of content.
@@ -45,14 +47,23 @@ fun playerImageModel(
     context: PlatformContext,
     widthPx: Int,
     heightPx: Int,
-): PlayerImageModel = PlayerImageModel { id ->
-    ImageRequest.Builder(context)
-        .data(id.value)
-        // Explicit and identical in both windows. Without this Coil infers the size from
-        // each composable's constraints, which is the whole problem.
-        .size(Size(widthPx.coerceAtLeast(1), heightPx.coerceAtLeast(1)))
-        // Matches ScalingMode.Fit, the only mode v0.1 sets. Downscaling to the display's
-        // own resolution also stops a 12000px battle map from decoding at native size.
-        .scale(Scale.FIT)
-        .build()
+): PlayerImageModel {
+    // Decoded at the pointer's deepest zoom, not at the display's own size, so zooming in
+    // reveals detail rather than enlarging a display-sized bitmap. About four times the
+    // memory per image — 33 MB at 1080p rather than 8 — and nothing at all for an image
+    // already smaller than this, because Coil never upsamples on decode.
+    val decodeWidth = (widthPx * Viewport.MAX_ZOOM).roundToInt().coerceAtLeast(1)
+    val decodeHeight = (heightPx * Viewport.MAX_ZOOM).roundToInt().coerceAtLeast(1)
+
+    return PlayerImageModel { id ->
+        ImageRequest.Builder(context)
+            .data(id.value)
+            // Explicit and identical in both windows. Without this Coil infers the size from
+            // each composable's constraints, which is the whole problem.
+            .size(Size(decodeWidth, decodeHeight))
+            // Matches ScalingMode.Fit, the only mode set. The cap also stops a 12000px battle
+            // map from decoding at native size.
+            .scale(Scale.FIT)
+            .build()
+    }
 }

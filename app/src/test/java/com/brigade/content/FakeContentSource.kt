@@ -41,3 +41,11 @@ fun image(id: String, name: String, parent: String? = null) = ContentItem(
     mimeType = "image/png",
     kind = ContentKind.Image,
 )
+
+fun note(id: String, name: String, parent: String? = null) = ContentItem(
+    id = ContentId(id),
+    parentId = parent?.let(::ContentId),
+    displayName = name,
+    mimeType = "text/markdown",
+    kind = ContentKind.Markdown,
+)

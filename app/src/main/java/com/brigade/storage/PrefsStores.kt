@@ -2,6 +2,7 @@ package com.brigade.storage
 
 import android.content.Context
 import com.brigade.content.RootStore
+import com.brigade.journal.HeartbeatStore
 import com.brigade.presentation.PresentationSnapshot
 import com.brigade.presentation.SnapshotStore
 
@@ -45,6 +46,7 @@ class PrefsSnapshotStore(context: Context) : SnapshotStore {
             imageId = imageId,
             scaling = scaling,
             liveSlot = slot.takeIf { it >= 0 },
+            originPath = prefs.getString(KEY_ORIGIN, null),
         )
     }
 
@@ -53,6 +55,7 @@ class PrefsSnapshotStore(context: Context) : SnapshotStore {
             .putString(KEY_IMAGE, snapshot.imageId)
             .putString(KEY_SCALING, snapshot.scaling)
             .putInt(KEY_SLOT, snapshot.liveSlot ?: -1)
+            .putString(KEY_ORIGIN, snapshot.originPath)
             .apply()
     }
 
@@ -60,5 +63,34 @@ class PrefsSnapshotStore(context: Context) : SnapshotStore {
         const val KEY_IMAGE = "presentation_image_id"
         const val KEY_SCALING = "presentation_scaling"
         const val KEY_SLOT = "presentation_live_slot"
+        const val KEY_ORIGIN = "presentation_origin"
+    }
+}
+
+/**
+ * When the recorder last knew a panel was still on screen, per campaign.
+ *
+ * App-private rather than in the journal: it is overwritten once a minute, and a minute's
+ * worth of lines in a Git-tracked file for the sake of a crash would be the wrong trade.
+ */
+class PrefsHeartbeatStore(context: Context) : HeartbeatStore {
+
+    private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    override fun load(campaign: String): Long? {
+        if (prefs.getString(KEY_CAMPAIGN, null) != campaign) return null
+        return prefs.getLong(KEY_AT, -1L).takeIf { it >= 0 }
+    }
+
+    override fun save(campaign: String, atMillis: Long) {
+        prefs.edit()
+            .putString(KEY_CAMPAIGN, campaign)
+            .putLong(KEY_AT, atMillis)
+            .apply()
+    }
+
+    private companion object {
+        const val KEY_CAMPAIGN = "journal_alive_campaign"
+        const val KEY_AT = "journal_alive_at"
     }
 }

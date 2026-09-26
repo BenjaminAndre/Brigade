@@ -6,11 +6,16 @@
         Compose Material3 provides the actual styling; this exists only so the window
         starts with the right background and no action bar, avoiding a white flash
         before the first frame.
+
+        The colours it needs come from values/ and values-night/, so one style serves both
+        Papier and Encre.
     -->
     <style name="Theme.Brigade" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/window_background</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">@bool/light_system_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/light_system_bars</item>
     </style>
 
 </resources>

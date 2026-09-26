@@ -32,6 +32,7 @@ import com.brigade.presentation.Frame
 import com.brigade.presentation.PresentationState
 import com.brigade.presentation.ScalingMode
 import com.brigade.presentation.TransitionKind
+import com.brigade.presentation.Viewport
 import com.brigade.presentation.frame
 import kotlin.math.roundToInt
 
@@ -63,11 +64,13 @@ import kotlin.math.roundToInt
  * `imageAspect / boxAspect`. So a 480 px preview and a 3840 px player window are
  * geometrically identical as long as both boxes share an aspect ratio.
  *
- * ### When crop, pan and zoom arrive
+ * ### Pan and zoom
  *
- * Express them in **normalised [0,1] coordinates** on `VisualPresentation`, never in
- * pixels. A pixel offset means different things in a 480 px preview and a 3840 px window,
- * and the preview would quietly start lying about what the players see.
+ * Arrive as a [Viewport] in **normalised coordinates**, never in pixels, and are turned into
+ * this window's pixels only at draw time — see [viewport]. A pixel offset means different
+ * things in a 480 px preview and a 3840 px window, and the preview would quietly start lying
+ * about what the players see. The gestures that produce it live on the GM side; this
+ * composable only ever reads it.
  */
 @Composable
 fun PresentationSurface(
@@ -231,7 +234,11 @@ private fun FrameLayer(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(Color.Black)
+            // A zoomed picture is drawn larger than the layer. Clipped here, per layer, and
+            // not only by the surface: inside a dissolve the incoming layer is masked in an
+            // offscreen buffer, and whatever spilt past its bounds would be masked with it.
+            .clipToBounds(),
         contentAlignment = Alignment.Center,
     ) {
         when (frame) {
@@ -239,13 +246,21 @@ private fun FrameLayer(
             // application text — campaign info is the one exception, and it is content.
             Frame.Black -> Unit
 
-            is Frame.Picture -> AsyncImage(
-                model = model(frame.id),
-                contentDescription = null,
-                contentScale = frame.scaling.toContentScale(),
-                alignment = Alignment.Center,
-                modifier = Modifier.fillMaxSize(),
-            )
+            is Frame.Picture -> {
+                // Remembered by id: a pinch recomposes this layer at gesture rate, and
+                // handing Coil a freshly built request on each step would lean on its request
+                // equality to avoid reloading. Keeping the same instance leans on nothing.
+                val request = remember(frame.id, model) { model(frame.id) }
+                AsyncImage(
+                    model = request,
+                    contentDescription = null,
+                    contentScale = frame.scaling.toContentScale(),
+                    alignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .viewport(frame.viewport),
+                )
+            }
 
             is Frame.Info -> {
                 frame.background?.let { background ->
@@ -266,6 +281,29 @@ private fun FrameLayer(
         }
     }
 }
+
+/**
+ * Frames the picture on the GM's pointer.
+ *
+ * Reads the layer's size only to turn the viewport's fractions into this window's pixels — a
+ * uniform scale of one geometry, which is exactly what the invariants permit, and what keeps
+ * a 480 px preview and a 3840 px window showing the same region.
+ *
+ * Nothing at all at full view, so an unzoomed picture takes the path it always took.
+ */
+private fun Modifier.viewport(viewport: Viewport): Modifier =
+    if (viewport.isFull) {
+        this
+    } else {
+        graphicsLayer {
+            // Scaled about the middle, the default transform origin; the translation then
+            // slides the viewport's centre to the middle of the layer.
+            scaleX = viewport.zoom
+            scaleY = viewport.zoom
+            translationX = -viewport.zoom * size.width * (viewport.centerX - 0.5f)
+            translationY = -viewport.zoom * size.height * (viewport.centerY - 0.5f)
+        }
+    }
 
 private fun ScalingMode.toContentScale(): ContentScale = when (this) {
     ScalingMode.Fit -> ContentScale.Fit

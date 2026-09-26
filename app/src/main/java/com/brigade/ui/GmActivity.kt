@@ -1,23 +1,34 @@
 package com.brigade.ui
 
 import android.content.Intent
+import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.brigade.appGraph
 import com.brigade.ui.theme.BrigadeTheme
+
+/**
+ * Behind a three-button navigation bar only; gesture navigation draws no scrim. The two themes'
+ * backgrounds, translucent, so the bar reads as part of the page rather than a grey stripe.
+ */
+private val NAV_SCRIM_PAPIER = AndroidColor.argb(0xE6, 0xE4, 0xD6, 0xBF)
+private val NAV_SCRIM_ENCRE = AndroidColor.argb(0xCC, 0x1A, 0x16, 0x11)
 
 class GmActivity : ComponentActivity() {
 
@@ -33,6 +44,8 @@ class GmActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Before the first frame, so it is never laid out without edge-to-edge and then
+        // jumps. The effect in setContent re-applies it when the tablet changes mode.
         enableEdgeToEdge()
 
         // Attached here and detached on ON_DESTROY by the host itself, so the player
@@ -41,7 +54,27 @@ class GmActivity : ComponentActivity() {
         graph.playerDisplay.attach(this)
 
         setContent {
-            BrigadeTheme {
+            val dark = isSystemInDarkTheme()
+
+            // Re-applied whenever the tablet switches between light and dark. The manifest
+            // handles uiMode itself, so the Activity is not recreated and the call in onCreate
+            // would leave the status-bar icons in the old mode — dark icons on Encre's ink,
+            // light ones on Papier's paper. The theme below flips on its own.
+            DisposableEffect(dark) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(
+                        AndroidColor.TRANSPARENT,
+                        AndroidColor.TRANSPARENT,
+                    ) { dark },
+                    navigationBarStyle = SystemBarStyle.auto(
+                        NAV_SCRIM_PAPIER,
+                        NAV_SCRIM_ENCRE,
+                    ) { dark },
+                )
+                onDispose {}
+            }
+
+            BrigadeTheme(dark = dark) {
                 val gmViewModel: GmViewModel = viewModel(factory = GmViewModel.Factory)
 
                 val browsing by gmViewModel.browsing.collectAsStateWithLifecycle()
@@ -56,6 +89,7 @@ class GmActivity : ComponentActivity() {
                 val campaign by graph.campaign.collectAsStateWithLifecycle()
                 val campaignDateIso by graph.campaignDateIso.collectAsStateWithLifecycle()
                 val slotWriteFailed by graph.slotWriteFailed.collectAsStateWithLifecycle()
+                val recapProblem by graph.recapProblem.collectAsStateWithLifecycle()
 
                 BackHandler(enabled = browsing.canGoUp) { gmViewModel.up() }
 
@@ -72,6 +106,7 @@ class GmActivity : ComponentActivity() {
                         campaignDateIso = campaignDateIso,
                         campaign = campaign,
                         slotWriteFailed = slotWriteFailed,
+                        recapProblem = recapProblem,
                         onChooseFolder = { pickCampaignFolder.launch(null) },
                         onJumpTo = gmViewModel::jumpTo,
                         // Actualiser re-reads Campagne.md as well as the folder listing:
@@ -91,6 +126,8 @@ class GmActivity : ComponentActivity() {
                         onStartTimer = graph::startTimer,
                         onExtendTimer = graph::extendTimer,
                         onClearTimer = graph::clearTimer,
+                        onPanZoom = graph::panZoom,
+                        onResetViewport = graph::resetViewport,
                         modifier = Modifier
                             .fillMaxSize()
                             .safeDrawingPadding(),

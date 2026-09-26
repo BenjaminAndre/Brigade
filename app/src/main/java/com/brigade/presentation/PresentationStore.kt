@@ -1,6 +1,7 @@
 package com.brigade.presentation
 
 import com.brigade.content.ContentId
+import com.brigade.content.ContentPath
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,14 +12,20 @@ interface PresentationController {
 
     val state: StateFlow<PresentationState>
 
-    /** Presents an image directly. Clears any note bar — a plain image came from no note. */
-    fun show(id: ContentId, fromSlot: SlotId? = null)
+    /**
+     * Presents an image directly. Clears any note bar — a plain image came from no note.
+     *
+     * @param origin the image's campaign-relative path, for the session recap.
+     */
+    fun show(id: ContentId, fromSlot: SlotId? = null, origin: ContentPath? = null)
 
     /**
      * Presents a Markdown note: the players see [imageId] (black when null), and the GM bar
      * shows [note].
+     *
+     * @param origin the note's campaign-relative path, for the session recap.
      */
-    fun showNote(imageId: ContentId?, note: NoteBar, fromSlot: SlotId? = null)
+    fun showNote(imageId: ContentId?, note: NoteBar, fromSlot: SlotId? = null, origin: ContentPath? = null)
 
     /**
      * Shows or hides the full-screen campaign info panel.
@@ -35,6 +42,12 @@ interface PresentationController {
     fun extendTimer()
 
     fun clearTimer()
+
+    /** One step of the GM's pinch-and-drag on the preview. Ignored unless a picture is live. */
+    fun panZoom(gesture: ViewportGesture)
+
+    /** Back to the whole picture — the double-tap. */
+    fun resetViewport()
 
     fun setScaling(mode: ScalingMode)
 
@@ -72,24 +85,34 @@ class PresentationStore(
     private val _state = MutableStateFlow(initial)
     override val state: StateFlow<PresentationState> = _state.asStateFlow()
 
-    override fun show(id: ContentId, fromSlot: SlotId?) =
-        present(VisualSource.Image(id), note = null, fromSlot = fromSlot)
+    override fun show(id: ContentId, fromSlot: SlotId?, origin: ContentPath?) =
+        present(VisualSource.Image(id), note = null, fromSlot = fromSlot, origin = origin)
 
-    override fun showNote(imageId: ContentId?, note: NoteBar, fromSlot: SlotId?) =
+    override fun showNote(imageId: ContentId?, note: NoteBar, fromSlot: SlotId?, origin: ContentPath?) =
         present(
             source = if (imageId == null) VisualSource.None else VisualSource.Image(imageId),
             note = note,
             fromSlot = fromSlot,
+            origin = origin,
         )
 
-    private fun present(source: VisualSource, note: NoteBar?, fromSlot: SlotId?) = change {
+    private fun present(
+        source: VisualSource,
+        note: NoteBar?,
+        fromSlot: SlotId?,
+        origin: ContentPath?,
+    ) = change {
         it.copy(
             scene = it.scene.copy(
                 mode = SceneMode.Visual,
-                visual = it.scene.visual.copy(source = source),
+                // Every recall comes up whole. A zoom belongs to the moment the GM pointed at
+                // something, not to the picture — carried over, it would frame the next image
+                // on a corner chosen for a different one.
+                visual = it.scene.visual.copy(source = source, viewport = Viewport.FULL),
                 // Always assigned, never merged: showing a plain image must clear a bar left
-                // over from the note before it.
+                // over from the note before it. The same goes for its origin.
                 note = note,
+                origin = origin,
             ),
             liveSlot = fromSlot,
         )
@@ -138,6 +161,29 @@ class PresentationStore(
         )
     }
 
+    override fun panZoom(gesture: ViewportGesture) = reframe { it.applied(gesture) }
+
+    override fun resetViewport() = reframe { Viewport.FULL }
+
+    /**
+     * Changes the framing of the live picture, bypassing [change].
+     *
+     * Reframing is neither a new intent nor a new picture, so it bumps no revision and stamps
+     * no transition. It is also read-modify-write *inside* the update: a pinch reports steps
+     * faster than the GM surface recomposes, and a step computed from a viewport the UI read
+     * earlier would silently drop the one before it.
+     *
+     * Nothing to frame on INFO or black, so it does nothing there rather than storing a zoom
+     * nobody can see.
+     */
+    private fun reframe(block: (Viewport) -> Viewport) {
+        _state.update { current ->
+            if (current.frame() !is Frame.Picture) return@update current
+            val visual = current.scene.visual
+            current.copy(scene = current.scene.copy(visual = visual.copy(viewport = block(visual.viewport))))
+        }
+    }
+
     override fun setScaling(mode: ScalingMode) = change {
         it.copy(scene = it.scene.copy(visual = it.scene.visual.copy(scaling = mode)))
     }
@@ -148,8 +194,9 @@ class PresentationStore(
             // state, so clearing what is *shown* must not discard what was *loaded*.
             scene = it.scene.copy(
                 mode = SceneMode.Visual,
-                visual = it.scene.visual.copy(source = VisualSource.None),
+                visual = it.scene.visual.copy(source = VisualSource.None, viewport = Viewport.FULL),
                 note = null,
+                origin = null,
             ),
             liveSlot = null,
         )
@@ -180,7 +227,10 @@ class PresentationStore(
     ): ActiveTransition? {
         // Nothing the players can see moved — a scaling tweak, a slot re-tap on the image
         // already showing. Leave any running dissolve alone rather than restarting it.
-        if (current.frame() == next.frame()) return current.transition
+        //
+        // Compared unframed, so re-tapping the live slot while zoomed snaps back to the whole
+        // picture exactly as a double-tap does, instead of washing a map into itself.
+        if (current.frame().unframed() == next.frame().unframed()) return current.transition
 
         val chosen = spec()
         if (chosen.kind == TransitionKind.Cut || chosen.durationMillis <= 0) return null

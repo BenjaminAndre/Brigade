@@ -5,13 +5,25 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
+ * The session recap Brigade writes at the campaign root.
+ *
+ * Named here, in `content/`, because it is the one campaign-root file the browser hides: it
+ * is Brigade's own record, not content to present, and a note that recalled as black with
+ * «Brigade» in the bar would only be a trap at the table.
+ */
+const val RECAP_FILE_NAME: String = "Brigade.md"
+
+/**
  * Caching, filtering and ordering over a [ContentSource].
  *
  * Lives on the application graph, not on a ViewModel, so the cache survives Activity
  * recreation — which on a DeX tablet happens every time the window is dragged or the
  * device is rotated.
  */
-class ContentRepository(private val source: ContentSource) {
+class ContentRepository(
+    private val source: ContentSource,
+    private val notes: NoteSource = NoteSource { null },
+) {
 
     private val mutex = Mutex()
     private val cache = LinkedHashMap<ContentId, List<ContentItem>>()
@@ -20,16 +32,22 @@ class ContentRepository(private val source: ContentSource) {
     private val indexMutex = Mutex()
     private var filenameIndex: Map<String, List<IndexedFile>>? = null
 
+    /** Its own lock again: building [notesByImage] reads notes, which reaches [filenameIndex]. */
+    private val notesIndexMutex = Mutex()
+    private var notesByImage: Map<ContentId, ContentPath>? = null
+
     val rootId: ContentId get() = source.rootId
 
     suspend fun children(folder: ContentId, refresh: Boolean = false): List<ContentItem> =
         mutex.withLock {
             if (!refresh) cache[folder]?.let { return@withLock it }
+            val atRoot = folder == source.rootId
             val listed = source.listChildren(folder)
                 // Hides .brigade/ and .git/ from the browser. §2.3 keeps application state out
                 // of the way of campaign content, and this is the other half of that bargain:
                 // the GM never has to look at it.
                 .filterNot { it.displayName.startsWith(".") }
+                .filterNot { atRoot && it.displayName == RECAP_FILE_NAME }
                 .sortedWith(ContentOrder.comparator)
             cache[folder] = listed
             listed
@@ -64,6 +82,29 @@ class ContentRepository(private val source: ContentSource) {
         }
         return null
     }
+
+    /**
+     * Reads [note] afresh.
+     *
+     * Deliberately not cached, unlike listings: the GM edits notes in Obsidian beside Brigade
+     * mid-session, and presenting one should show what it says now.
+     */
+    suspend fun readNote(note: ContentItem): NoteDocument? = notes.read(note)
+
+    /**
+     * The image a note presents: the first of its embeds that **resolves to an image**, not
+     * the first one written. An `http` URL, a link to a renamed file, or an embedded note or
+     * PDF is skipped rather than leaving the players looking at black.
+     *
+     * The one place this rule lives. Presenting a note and drawing its thumbnail both come
+     * through here, so the browser shows exactly the picture the players will get.
+     *
+     * @param noteFolder the campaign-relative folder the note sits in.
+     */
+    suspend fun firstImage(document: NoteDocument, noteFolder: ContentPath): ContentItem? =
+        document.imageLinks.firstNotNullOfOrNull { link ->
+            resolveLink(link, noteFolder)?.takeIf { it.kind == ContentKind.Image }
+        }
 
     /**
      * Resolves one image link written inside a note.
@@ -133,6 +174,45 @@ class ContentRepository(private val source: ContentSource) {
         filenameIndex?.let { return@withLock it }
 
         val built = LinkedHashMap<String, MutableList<IndexedFile>>()
+        forEachFile { item, folder ->
+            built.getOrPut(item.displayName.lowercase(Locale.ROOT)) { mutableListOf() }
+                .add(IndexedFile(item, folder))
+        }
+
+        filenameIndex = built
+        built
+    }
+
+    /**
+     * Every image a note presents, mapped to that note — [firstImage], reversed.
+     *
+     * For the session recap, which files a raw image shown by mistake under the note it
+     * belongs to, even when that note was never shown itself.
+     *
+     * Reads every note in the campaign, so unlike [readNote] it is kept: built on first use,
+     * dropped by [invalidate]. An image newly added to a note mid-session is therefore
+     * attributed from the next *Actualiser* on. When two notes present the same image, the
+     * shallowest wins, then natural order — the same tie-break as a bare-filename link.
+     */
+    suspend fun notesByImage(): Map<ContentId, ContentPath> = notesIndexMutex.withLock {
+        notesByImage?.let { return@withLock it }
+
+        val built = LinkedHashMap<ContentId, ContentPath>()
+        forEachFile { item, folder ->
+            if (item.kind != ContentKind.Markdown) return@forEachFile
+            val image = readNote(item)?.let { firstImage(it, folder) } ?: return@forEachFile
+            built.putIfAbsent(image.id, ContentPath.of(folder.segments + item.displayName))
+        }
+
+        notesByImage = built
+        built
+    }
+
+    /**
+     * Every non-folder in the campaign with the folder it sits in, breadth first — so
+     * shallower files come first, and within a folder in natural order.
+     */
+    private suspend fun forEachFile(block: suspend (item: ContentItem, folder: ContentPath) -> Unit) {
         val queue = ArrayDeque<Pair<ContentId, ContentPath>>()
         queue += source.rootId to ContentPath("")
 
@@ -142,14 +222,10 @@ class ContentRepository(private val source: ContentSource) {
                 if (item.kind == ContentKind.Folder) {
                     queue += item.id to ContentPath.of(path.segments + item.displayName)
                 } else {
-                    built.getOrPut(item.displayName.lowercase(Locale.ROOT)) { mutableListOf() }
-                        .add(IndexedFile(item, path))
+                    block(item, path)
                 }
             }
         }
-
-        filenameIndex = built
-        built
     }
 
     suspend fun isAvailable(): Boolean = source.isAvailable()
@@ -157,6 +233,7 @@ class ContentRepository(private val source: ContentSource) {
     suspend fun invalidate() {
         mutex.withLock { cache.clear() }
         indexMutex.withLock { filenameIndex = null }
+        notesIndexMutex.withLock { notesByImage = null }
     }
 
     private data class IndexedFile(val item: ContentItem, val folder: ContentPath)

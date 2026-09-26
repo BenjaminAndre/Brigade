@@ -81,6 +81,8 @@ If Brigade needs application-specific state, keep it separate from campaign cont
 
 Prefer a small optional `.brigade/` directory for ephemeral/session-specific state rather than embedding metadata into every campaign file.
 
+*Since v0.6* there is one file outside it, requested explicitly: the session recap `Brigade.md` at the campaign root (§25). It is Brigade's own file, never one of the GM's, and Brigade refuses to overwrite a `Brigade.md` it did not write.
+
 The application must never require a proprietary database for normal operation.
 
 ---
@@ -476,8 +478,8 @@ Later modes may include:
 
 * Fill/crop
 * native resolution
-* zoom
-* pan
+* zoom — *done in v0.5, see §24*
+* pan — *done in v0.5, see §24*
 
 But those are presentation behaviours, not properties of the underlying image.
 
@@ -920,7 +922,7 @@ Notes are browsable and presentable content, alongside images.
 
 ## 23.1 What presenting a note means
 
-Recalling a note shows the players **the first image it links that resolves** — not the first one written, so a broken link or a web URL is skipped rather than blanking the display. A note linking no image shows black, which is the useful case for a secrets or lore note.
+Recalling a note shows the players **the first image it links that resolves** — not the first one written, so a broken link, a web URL, or an embed that resolves to something other than an image (another note, a PDF) is skipped rather than blanking the display. A note linking no image shows black, which is the useful case for a secrets or lore note.
 
 Both link syntaxes are understood, because a campaign authored in Obsidian contains both:
 
@@ -954,6 +956,77 @@ Keys are English; values are the GM's own French and are never translated (§21.
 
 **The date is campaign state, not a note property.** It is deliberately not stored on the bar: baking it in would leave every already-resolved slot showing the in-world date it happened to be resolved on. The segment is therefore context rather than a fact about the note, which is a small semantic fudge accepted in exchange for one meaning everywhere.
 
-## 23.3 Notes are listed by name
+## 23.3 Notes show the picture they present
 
-Note cells in the browser show a filename and no thumbnail. Rendering each note's first image would require reading every note in a folder to paint one screen. Slot mini-previews do show the image, because there are exactly six and they are already resolved.
+*Amended in v0.5.* Until then note cells showed only a filename, on the grounds that a thumbnail meant reading every note in a folder to paint one screen. The first real session proved that the wrong trade: a folder of notes was a wall of names, and the GM could not see what they were about to show.
+
+A note cell now shows **exactly the image recalling it would present** — resolved by the same rule as §23.1, in one place, so the browser and the player display cannot disagree.
+
+The cost is bounded rather than avoided:
+
+* Only the **current folder's** notes are read, never the tree.
+* The grid appears immediately with filenames; thumbnails fill in behind it, top first.
+* Leaving the folder stops the reading.
+* Notes are read again on each visit, not cached: they are edited in Obsidian beside Brigade mid-session.
+
+A note keeps its badge and tinted border over its thumbnail, because tapping it presents a note — bar and all — not merely the picture.
+
+---
+
+# 24. The pointer
+
+*v0.5.* Pinch the preview to zoom, drag to pan, double-tap for the whole picture. The player display follows. It is how the GM says *look here* without a laser pointer across the table.
+
+## 24.1 A viewport is state, not a gesture
+
+The framing is part of the presentation, on `VisualPresentation`, in **normalised coordinates** — a zoom ratio and a centre as fractions of the surface. Never pixels: an offset in the preview's pixels means something else on the player display, and the preview would quietly stop showing what the players see (§13).
+
+The gestures exist only on the GM side. The preview divides them by its own size before anything reaches the state; the shared renderer only ever reads a viewport and never sees a touch.
+
+## 24.2 Behaviour
+
+* **Zoom is capped at 2×**, and images are decoded at twice the player display's resolution to match, so every permitted zoom is genuinely sharp. The two numbers are one constant; raising the cap without the decode would buy only blur.
+* **Presenting a picture always starts it whole.** A zoom belongs to the moment the GM pointed at something, not to the picture — a slot always means the same thing.
+* **INFO and back keeps the zoom**, because INFO covers the picture without replacing it (§22.1).
+* **Reframing never dissolves.** Transitions compare pictures, not framings; re-tapping the live slot while zoomed snaps back exactly like a double-tap.
+* **Only over a picture.** On INFO or black the gestures are off — there is nothing to frame.
+* **Never restored after a relaunch.** Coming back to a corner of a map nobody remembers zooming into would be baffling.
+* The preview shows the zoom factor while zoomed in, so a framed corner is not mistaken for the whole picture.
+
+A letterboxed image can be panned into its black bars: the viewport is of the surface, not of the image, which is what keeps it identical in two windows that finish loading at different moments. The preview shows it exactly as the players see it.
+
+---
+
+# 25. Session recap
+
+*v0.6.* A record for the GM, not the players: after each session, `Brigade.md` at the campaign root lists what was on the players' screen, in order, and for how long. Time on screen is a good proxy for what the session was actually about, and the recap is read in Obsidian, where every note in it is a link.
+
+## 25.1 What is recorded
+
+* **What the players saw**, and only that. Recording runs only while a player display is attached: recalling slots at home with no second screen is preparation, and would pad every session with rehearsal.
+* **Panels, not frames.** A note, an image, INFO, or black. Panning, zooming, the incense timer and transitions change what is drawn but not what the table is looking at, and are not recorded.
+* **Everything that presents** — slots, *Afficher*, INFO — is recorded, because the record is derived from presentation state rather than written at each call site.
+
+## 25.2 What a session is
+
+* A new session starts after **more than six hours** with nothing on screen. A gap rather than a calendar day, because sessions run past midnight.
+* A session shorter than **thirty minutes**, first thing shown to last, is a test and is not listed.
+* Time the display was unplugged counts for nothing, even when the same panel was up on both sides of it.
+
+## 25.3 Notes over raw images
+
+A raw image shown on its own is **filed under the note that presents it** (§23.1) — so showing a character's portrait by mistake instead of their note still counts as time on that character, even if the note itself was never shown. When two notes present the same image, the shallowest wins, then natural order. A raw image followed by its own note is one appearance, not two.
+
+## 25.4 The file
+
+For each session, newest first:
+
+* a heading with the date, the hours (the end carries its weekday past midnight) and the length;
+* the timeline — start time, panel, time on screen;
+* the same ranked by total time on screen, INFO and black left out: they are the GM preparing or pausing.
+
+Notes and images are wikilinks by full path, so a name two files share still opens the one that was shown.
+
+**Ownership.** `Brigade.md` carries `generated_by: Brigade` in its frontmatter and is rewritten freely. A `Brigade.md` without it is the GM's, is never overwritten, and the GM screen says so. Brigade creates the file only once there is a session worth listing, so a campaign that has only ever been tested in stays as the GM left it.
+
+**The record behind it** is `.brigade/journal.tsv`: append-only, one line per change, UTC instants to the second, readable in a Git diff. `Brigade.md` is rendered from it and can always be rebuilt; the journal is the thing worth keeping. A panel left open by a Brigade killed mid-session is ended at the last once-a-minute heartbeat on the next launch.

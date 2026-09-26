@@ -28,11 +28,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.brigade.CampaignState
 import com.brigade.R
+import com.brigade.RecapProblem
 import com.brigade.content.ContentItem
 import com.brigade.display.PlayerDisplayStatus
 import com.brigade.presentation.PresentationState
 import com.brigade.presentation.SlotBankState
 import com.brigade.presentation.SlotId
+import com.brigade.presentation.ViewportGesture
 import com.brigade.presentation.activeControl
 import com.brigade.render.PlayerImageModel
 
@@ -52,6 +54,7 @@ fun GmScreen(
     campaignDateIso: String?,
     campaign: CampaignState,
     slotWriteFailed: Boolean,
+    recapProblem: RecapProblem?,
     onChooseFolder: () -> Unit,
     onJumpTo: (Int) -> Unit,
     onRefresh: () -> Unit,
@@ -64,6 +67,8 @@ fun GmScreen(
     onStartTimer: (minutes: Int) -> Unit,
     onExtendTimer: () -> Unit,
     onClearTimer: () -> Unit,
+    onPanZoom: (ViewportGesture) -> Unit,
+    onResetViewport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (campaign) {
@@ -117,6 +122,20 @@ fun GmScreen(
             )
         }
 
+        recapProblem?.let { problem ->
+            Text(
+                text = stringResource(
+                    when (problem) {
+                        RecapProblem.WriteFailed -> R.string.error_recap_save
+                        RecapProblem.NotOurs -> R.string.error_recap_not_ours
+                    },
+                ),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(vertical = 4.dp),
+            )
+        }
+
         // Two-pane once there is room for it — the Tab S7+ in landscape, or a wide DeX
         // window. BoxWithConstraints is fine *here*; the place it is forbidden is inside
         // PresentationSurface, where a size-dependent branch would break the
@@ -157,6 +176,8 @@ fun GmScreen(
                         displayStatus = displayStatus,
                         imageModel = imageModel,
                         campaignDateIso = campaignDateIso,
+                        onPanZoom = onPanZoom,
+                        onResetViewport = onResetViewport,
                         modifier = Modifier
                             .weight(0.38f)
                             // fillMaxHeight so the pane has a real, finite height to fit
@@ -183,6 +204,8 @@ fun GmScreen(
                         displayStatus = displayStatus,
                         imageModel = imageModel,
                         campaignDateIso = campaignDateIso,
+                        onPanZoom = onPanZoom,
+                        onResetViewport = onResetViewport,
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = previewMaxHeight),
@@ -254,6 +277,8 @@ private fun PreviewWithNoteBar(
     displayStatus: PlayerDisplayStatus,
     imageModel: PlayerImageModel,
     campaignDateIso: String?,
+    onPanZoom: (ViewportGesture) -> Unit,
+    onResetViewport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -264,6 +289,8 @@ private fun PreviewWithNoteBar(
             state = presentation,
             status = displayStatus,
             model = imageModel,
+            onPanZoom = onPanZoom,
+            onResetViewport = onResetViewport,
             modifier = Modifier.fillMaxWidth(),
         )
     }

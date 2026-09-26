@@ -20,8 +20,8 @@ android {
         // versionCode is derived: major * 10000 + minor * 100 + patch. It only has to
         // increase, and deriving it means it can never silently disagree with the name
         // someone is reading in Settings or on a release page.
-        versionCode = 403
-        versionName = "0.4.3"
+        versionCode = 600
+        versionName = "0.6.0"
     }
 
     buildTypes {

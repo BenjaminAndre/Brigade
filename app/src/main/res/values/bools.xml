@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark status and navigation icons over the paper background. Flipped in values-night/.
+         Only for the moment before the first frame: after that, enableEdgeToEdge() sets the
+         icons from the same dark-mode setting the Compose theme follows. -->
+    <bool name="light_system_bars">true</bool>
+</resources>

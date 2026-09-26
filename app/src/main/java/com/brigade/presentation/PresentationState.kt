@@ -1,6 +1,7 @@
 package com.brigade.presentation
 
 import com.brigade.content.ContentId
+import com.brigade.content.ContentPath
 
 /**
  * How a visual is fitted to the surface it is drawn on.
@@ -31,6 +32,12 @@ sealed interface VisualSource {
 data class VisualPresentation(
     val source: VisualSource = VisualSource.None,
     val scaling: ScalingMode = ScalingMode.Fit,
+
+    /**
+     * The GM's pan and zoom. Reset whenever a different picture is presented — a slot always
+     * comes up whole — and kept through INFO, which covers the picture without replacing it.
+     */
+    val viewport: Viewport = Viewport.FULL,
 )
 
 /** Which composed component is on the surface. INFO replaces the image; it does not overlay it. */
@@ -73,6 +80,16 @@ data class Scene(
      * draws it above the transition layers so a scene change does not dissolve it away.
      */
     val overlay: TimerOverlay? = null,
+
+    /**
+     * The campaign file the current visual was presented from: the note when it came from
+     * one, the image otherwise. Null for black, and for a picture restored from a snapshot
+     * that predates it.
+     *
+     * **GM-side bookkeeping**, for the session recap. Like [note], `frame()` does not consult
+     * it, so it cannot change what the players see.
+     */
+    val origin: ContentPath? = null,
 )
 
 /**

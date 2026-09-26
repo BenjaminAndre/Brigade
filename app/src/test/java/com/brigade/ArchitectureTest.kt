@@ -38,11 +38,31 @@ class ArchitectureTest {
         ),
         Rule("presentation", listOf("android.", "androidx.", "coil3.", "org.yaml", "com.brigade.ui")),
 
+        // The session recap: which sessions, how long, what Brigade.md says. Pure, because
+        // the rules the GM set — six hours, thirty minutes, notes over raw images — are the
+        // whole feature, and are only worth anything if the JVM tests can hold them.
+        Rule(
+            "journal",
+            listOf(
+                "android.",
+                "androidx.",
+                "coil3.",
+                "org.yaml",
+                "com.brigade.ui",
+                "com.brigade.render",
+                "com.brigade.display",
+            ),
+        ),
+
         // The shared renderer must not know which window it is in, nor reach for UI.
-        Rule("render", listOf("com.brigade.ui", "com.brigade.display")),
+        //
+        // Nor for Material: the GM theme follows the tablet's light/dark mode, and a renderer
+        // reading MaterialTheme would make the players' screen change with it. What the table
+        // sees is campaign content on black, whatever the GM's tablet is set to.
+        Rule("render", listOf("com.brigade.ui", "com.brigade.display", "androidx.compose.material")),
 
         // The player display is a renderer, not a screen.
-        Rule("display", listOf("com.brigade.ui")),
+        Rule("display", listOf("com.brigade.ui", "androidx.compose.material")),
     )
 
     @Test

@@ -5,6 +5,7 @@ import android.net.Uri
 import com.brigade.content.ContentItem
 import com.brigade.content.Markdown
 import com.brigade.content.NoteDocument
+import com.brigade.content.NoteSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,20 +25,20 @@ import org.yaml.snakeyaml.constructor.SafeConstructor
 class NoteReader(
     private val resolver: ContentResolver,
     private val io: CoroutineDispatcher = Dispatchers.IO,
-) {
+) : NoteSource {
 
     /**
      * @return the parsed note, or null when it cannot be read at all. A note that is present
      * but has no frontmatter and no links is perfectly valid and yields a [NoteDocument] with
      * just a name — which is still enough to fill the bar.
      */
-    suspend fun read(item: ContentItem): NoteDocument? = withContext(io) {
+    override suspend fun read(note: ContentItem): NoteDocument? = withContext(io) {
         runCatching {
-            val text = resolver.openInputStream(Uri.parse(item.id.value))?.use {
+            val text = resolver.openInputStream(Uri.parse(note.id.value))?.use {
                 it.readBytes().toString(Charsets.UTF_8)
             } ?: return@runCatching null
 
-            parse(item.displayName, text)
+            parse(note.displayName, text)
         }.getOrNull()
     }
 

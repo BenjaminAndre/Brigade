@@ -16,9 +16,10 @@ never violated.
 content/       → kotlin + coroutines only.  NO android.*, NO Compose, NO presentation/
                  (exception: content/saf/** — the single Android-touching leaf)
 presentation/  → content/ (ContentId, ContentPath) + coroutines.  NO android.*, NO Compose
+journal/       → presentation/, content/ + coroutines.  NO android.*, NO Compose — the recap
 render/        → presentation/, content/, Compose, Coil.  NO ui/, NO display/
 display/       → render/, presentation/, android.*.       NO ui/
-storage/       → adapters: android.* + the interfaces in content/ and presentation/
+storage/       → adapters: android.* + the interfaces in content/, presentation/ and journal/
 ui/            → everything
 ```
 
@@ -105,6 +106,33 @@ parameter `PresentationSurface` already accepted. Grid and slot-bar thumbnails k
 own small requests: they are GM-only, so §5 does not apply, and pinning them to the display
 resolution would decode a battle map at full size for a 132 dp cell.
 
+That size is **twice** the display's, not the display's own — `Viewport.MAX_ZOOM` — so the
+pointer's deepest zoom still has a source pixel per screen pixel. About 33 MB per image at
+1080p instead of 8, and nothing extra for images already smaller, since Coil never upsamples.
+
+### The pointer is state, not a gesture
+
+Pan and zoom live on `VisualPresentation` as a `Viewport` in fractions of the surface, carried
+into `Frame.Picture` and applied by `PresentationSurface` as a `graphicsLayer` scale and
+translation — the size read only to turn fractions into this window's pixels. Gestures exist
+only in `PlayerPreviewPane`, which divides by its own size before calling the store.
+
+Three things a plausible implementation gets wrong:
+
+- **Reframing bypasses `change()`.** A pinch reports a step per input event; through
+  `change()` each would bump the revision and stamp a dissolve of the map into itself.
+  Transitions compare `frame().unframed()`, so presenting the same picture again resets the
+  zoom without a wash either.
+- **The store applies each step to the viewport it holds now**, inside its `update`. Computed
+  in the UI from the last composed state, a step would silently drop whichever came before it
+  whenever input outruns recomposition — which, during a pinch, is always.
+- **The request is remembered per id** in `FrameLayer`. A pinch recomposes the layer at
+  gesture rate, and rebuilding the `ImageRequest` each step would lean on Coil's request
+  equality to avoid a reload.
+
+The snapshot writer also sits behind `distinctUntilChanged()` on the snapshot, or a pinch
+would be a disk write per finger movement for data it does not even persist.
+
 | State | Owner | Lifetime |
 |---|---|---|
 | `PresentationStore`, `SlotBank`, `ContentRepository`, `PlayerDisplayHost` | `AppGraph` | process |
@@ -124,6 +152,13 @@ representation in which it could arrive. The guarantee is structural, not a conv
 The campaign date is deliberately **not** stored on `NoteBar`. It is campaign state, composed
 at render time from the live config — carrying it would leave every already-resolved slot
 showing the in-world date it happened to be resolved on.
+
+Which image a note presents is decided in exactly one place, `ContentRepository.firstImage`.
+Presenting a note and drawing its browser thumbnail both call it, so the grid shows precisely
+the picture the players will get. Notes are read through `NoteSource`, an interface in
+`content/` implemented by `saf/NoteReader`, which keeps that rule on the JVM side of the
+Android boundary. Notes are never cached — they are edited in Obsidian mid-session — while
+listings are.
 
 Obsidian's `![[…]]` means "the file with this name, anywhere", not a path, so
 `ContentRepository` keeps a lazily-built filename index over the whole tree, cleared by the
@@ -150,7 +185,10 @@ projector previews as 16:10 (§16 Trap 6).
 |---|---|---|
 | Campaign root URI | app-private `SharedPreferences` | belongs to the install, not the campaign |
 | Last presentation | app-private `SharedPreferences` | session scratch; restored on INFO |
+| Recorder heartbeat | app-private `SharedPreferences` | overwritten every minute; only there to end a panel after a crash |
 | **Slot bank** | `<campaign>/.brigade/slots.json` | points at campaign content, so it travels with it (§2.3) |
+| **Session journal** | `<campaign>/.brigade/journal.tsv` | what the players saw; append-only, travels with the campaign |
+| **Session recap** | `<campaign>/Brigade.md` | rendered from the journal for the GM to read in Obsidian (§25) |
 
 Slots store **paths relative to the campaign root, never document URIs**. A document URI
 is provider-specific and survives neither a folder move, a reinstall, nor the campaign
@@ -159,7 +197,29 @@ the campaign folder at all. The cost is that a path must be resolved against the
 load; the benefit is that a slot bank is as portable as the campaign, and readable in a
 Git diff.
 
-Nothing else is ever written to the campaign folder.
+Nothing else is ever written to the campaign folder — and `Brigade.md` only when it carries
+Brigade's `generated_by: Brigade` marker, or does not exist yet. A `Brigade.md` the GM wrote is
+never touched.
+
+### The session recap
+
+The journal is derived from presentation state, not written at each call site:
+`SessionRecorder` watches `PresentationState` and the display status, maps each state to a
+`Panel` — note, image, INFO or black — and appends a line whenever that changes while a player
+display is attached. Framing, the timer and transitions never change the panel, so a pinch at
+gesture rate writes nothing. Slots, *Afficher* and INFO are recorded without knowing the
+journal exists.
+
+To name a note rather than the image it presents, the scene carries `Scene.origin`: the path
+it was presented from. GM-side like `Scene.note`, and like it ignored by `frame()`.
+
+Everything that decides what the file says — sessions split at gaps over six hours, sessions
+under thirty minutes dropped, raw images filed under their note, the Markdown itself — lives in
+`journal/`, which is plain Kotlin under the same rule as `presentation/`. `AppGraph` only reads
+the journal, asks the repository which note presents each raw image (a reverse index built
+once, and only when a raw image was shown), and writes the result. Rewrites wait three seconds
+for the screen to settle, and are skipped when nothing changed, so Obsidian open beside
+Brigade reloads the file once per change rather than on every tap.
 
 ## The escape hatch
 
@@ -187,3 +247,6 @@ GM Activity launches onto it, so "external" and "player" are not the same thing.
   tree URI, which has no document-id segment.
 - The GM preview renders presentation state in every display state; a missing player
   display is an overlay on top of it, never a replacement (§5.1).
+- The GM theme — Papier or Encre, following the tablet's dark mode — never reaches the
+  player display. `render/` and `display/` may not import Material at all, which
+  `ArchitectureTest` enforces, so there is no `MaterialTheme` for them to read.

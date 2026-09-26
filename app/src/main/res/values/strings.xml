@@ -36,6 +36,9 @@
          are long enough to be truncated (a simulated display is named, in full,
          "Superposition n°1 : 1920 x 1080, 320 dpi"). -->
     <string name="preview_display">%1$d × %2$d · %3$s</string>
+    <!-- Shown on the preview while the GM is zoomed in. Formatted in the resources' locale,
+         so French gets a decimal comma: «× 1,6». -->
+    <string name="preview_zoom">× %1$.1f</string>
 
     <!-- Control bar -->
     <string name="control_info">INFO</string>
@@ -50,7 +53,25 @@
     <string name="slot_filled">Emplacement %1$d : %2$s</string>
     <string name="slot_missing">Fichier introuvable</string>
 
+    <!-- Session recap: Brigade.md at the campaign root, read by the GM in Obsidian. -->
+    <string name="recap_title">Séances</string>
+    <string name="recap_notice">Tenu à jour par Brigade d\'après ce que les joueurs ont eu sous les yeux. Réécrit après chaque changement à l\'écran : ne le modifiez pas, vos modifications seraient perdues.</string>
+    <string name="recap_column_start">Début</string>
+    <string name="recap_column_panel">Panneau</string>
+    <string name="recap_column_duration">Durée</string>
+    <string name="recap_column_total">Total</string>
+    <string name="recap_longest">Le plus longtemps à l\'écran</string>
+    <string name="recap_black">Noir</string>
+    <!-- %1$s the date, %2$s the start time, %3$s the end time (with its weekday past
+         midnight), %4$s how long the session lasted. -->
+    <string name="recap_session_heading">%1$s · %2$s → %3$s · %4$s</string>
+    <string name="recap_duration_hours">%1$d h %2$02d</string>
+    <string name="recap_duration_minutes">%1$d min</string>
+    <string name="recap_duration_seconds">%1$d s</string>
+
     <!-- Errors -->
     <string name="error_slots_save">Impossible d\'enregistrer les emplacements</string>
+    <string name="error_recap_save">Impossible d\'écrire Brigade.md</string>
+    <string name="error_recap_not_ours">Un Brigade.md écrit par quelqu\'un d\'autre existe déjà : Brigade n\'y touche pas</string>
 
 </resources>

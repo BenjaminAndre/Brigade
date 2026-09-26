@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="window_background">#12141A</color>
+    <!-- The Papier theme's background, and values-night/ holds Encre's, so the window a cold
+         start shows before the first frame is already the colour Compose paints. -->
+    <color name="window_background">#E4D6BF</color>
     <!-- Sampled from icon.png's own frame, so the masked surround is indistinguishable
          from the artwork's border. -->
     <color name="ic_launcher_background">#0A255D</color>

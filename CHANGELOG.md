@@ -8,6 +8,107 @@ coarser than what follows.
 
 ---
 
+## 0.6.0 — Récap de séance
+
+A record for the GM: `Brigade.md` at the campaign root lists, per session, what the players
+had on screen, in order, and for how long. Time on screen is a good proxy for what a session
+was really about.
+
+- **Per session, newest first**: the date and hours, a timeline of every panel with its time
+  on screen, then the same ranked by total. INFO and black appear in the timeline but not the
+  ranking — they are you preparing or pausing.
+- **A session** is everything with no gap over 6 hours, so an evening past midnight stays one
+  session. Under 30 minutes is a test and is not listed.
+- **Notes over raw images**: an image shown on its own is filed under the note that presents
+  it, even if that note was never shown. A raw portrait followed by its own note is one entry.
+- **Recorded only while a player display is connected**, so recalling slots at home is not
+  a session. Unplugged time never counts.
+- Every note and image is an Obsidian link by full path, so the recap is a way back into the
+  campaign, and each note shown gets a backlink.
+- Rewritten a few seconds after the screen settles, so Obsidian open beside Brigade updates
+  as you play.
+
+**Where it lives**
+
+- `.brigade/journal.tsv` is the record: one line per change, append-only, UTC to the second.
+  `Brigade.md` is rendered from it and can always be rebuilt.
+- `Brigade.md` is created only once there is a session worth listing, and is hidden from the
+  browser. It carries `generated_by: Brigade`; a `Brigade.md` without it is yours, is never
+  overwritten, and the GM screen says so.
+- A panel left open by a Brigade killed mid-session is ended at the last once-a-minute
+  heartbeat on the next launch — at worst a minute lost, not the panel.
+
+**Also**
+
+- The last presentation remembers which note or image it came from, so a relaunch mid-session
+  still names what is on screen.
+
+## 0.5.1 — Papier et encre
+
+The GM interface re-coloured to sit with the campaign's art, a Song-dynasty-style ink and
+watercolour painting, instead of a generic cool dark blue.
+
+- **Colours measured from the painting**, not picked by eye. It is far more muted than it
+  looks: the paper is the only thing with real saturation, the blue-green mountains are warm
+  greys, and the one warm accent — a lantern tassel — is burnt sienna. So the accents are
+  sage and sienna, and the blue is gone.
+- **Two schemes, following the tablet's dark mode**, switched from Android's quick settings:
+  **Papier** (paper ground, ink text) to prepare in daylight, **Encre** (ink ground, paper
+  text) for an evening table, where a bright tablet dazzles the GM.
+- Titles and the folder path in the system serif. No font is bundled or downloaded.
+- Captions over thumbnails and the preview's zoom badge in warm ink and paper white rather
+  than black and white.
+- The player display is untouched in both modes, and now provably so: the renderer is barred
+  from importing Material at all.
+
+**Fixes**
+
+- The idle `INFO` and `SABLIER` buttons were Material's default purple-grey: the old theme
+  never set the colour they read. Every role is set now, in both schemes.
+- The window shown before the first frame matches the mode, so a cold start in light mode
+  no longer flashes dark.
+- Switching the tablet between light and dark while Brigade is open now also switches the
+  status-bar icons, which would otherwise stay in the old mode — invisible against the new
+  background.
+
+## 0.5.0 — Pointer
+
+The two things the first real session asked for.
+
+**Pointer.** Pinch the preview to zoom, drag to pan, double-tap for the whole picture. The
+player display follows, so the GM can say *look here* without leaning across the table.
+
+- Up to 2×. Images are now decoded at twice the player display's resolution, so every zoom
+  up to the cap shows real detail rather than an enlarged bitmap. Costs about 33 MB per image
+  at 1080p instead of 8; images already smaller than that cost nothing extra.
+- Presenting a picture always starts it whole — a slot always means the same thing.
+  Re-tapping the live slot snaps back exactly like a double-tap. INFO and back keeps the zoom.
+- Reframing never dissolves: the watercolor is for changing picture, not for moving around
+  one.
+- Gestures only work over a picture; on INFO or black there is nothing to frame.
+- The preview shows the zoom factor while zoomed in.
+- Not restored after a relaunch.
+
+**Note thumbnails.** Notes in the browser now show the image recalling them would present,
+instead of a bare filename. A folder of notes had been a wall of names.
+
+- Resolved by the same code that presents the note, so the thumbnail is exactly the picture
+  the players will get.
+- Only the open folder's notes are read, after the grid is already on screen, top first.
+  Leaving the folder stops the reading.
+- Re-read each time the folder is opened and on *Actualiser*, so a note edited in Obsidian
+  shows its new image without restarting anything. A newly *added* image file still needs
+  *Actualiser* first, exactly as presenting it does.
+
+**Fixes**
+
+- A note whose first resolving embed was another note or a PDF presented black. Only images
+  count now; the rest are skipped like broken links.
+- The last presentation was written to disk on every state change, including ones that
+  changed nothing it stores. It is now written only when it actually differs.
+- Leaving a folder while it was still listing could briefly show its contents under the next
+  folder's name.
+
 ## 0.4.3
 
 - Corrected the repository name to its canonical `Brigade`. The lowercase URL worked through

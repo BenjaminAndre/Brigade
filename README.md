@@ -12,7 +12,10 @@ game. Its one job:
 The tablet is the GM surface; a wired HDMI display is the player surface. They are two
 independent render targets of a single presentation state — not a mirror.
 
-The interface is French.
+The interface is French. Its colours are measured from a Song-dynasty-style ink and
+watercolour painting: **Papier** — xuan paper, ink text, sage and sienna — when the tablet is
+in light mode, and **Encre** — the same palette on ink-black — in dark mode, for an evening
+table. The player display is never themed.
 
 ## Demo
 
@@ -56,6 +59,15 @@ https://github.com/user-attachments/assets/caa28161-16bc-4219-b9c4-7d64ca203d6f
 - A live view of the player surface, at the real display's aspect ratio.
 - Shows the presentation state in every case — never a placeholder.
 
+**Pointer**
+- Pinch the preview to zoom, drag to pan — the player display follows. *Look here*, without
+  pointing across the table.
+- Double-tap for the whole picture again.
+- Up to 2×, and genuinely sharp all the way: images are decoded at twice the display's
+  resolution.
+- Every slot comes up whole; INFO and back keeps the zoom. The preview shows `× 1,6` while
+  zoomed so a corner is never mistaken for the whole map.
+
 **INFO**
 - Replaces the image with a full-screen campaign panel: title, location, in-world date in
   French, and the moon drawn in its true phase for that date.
@@ -63,6 +75,8 @@ https://github.com/user-attachments/assets/caa28161-16bc-4219-b9c4-7d64ca203d6f
   *nothing specific, I'm preparing*.
 
 **Markdown notes**
+- In the browser, each note shows the image recalling it would present — filled in behind
+  the filenames as the folder opens.
 - Recalling a note shows the players the first image it links that resolves.
 - Obsidian `![[Jade-Fox.png]]` (found by filename anywhere in the campaign) and
   `![](../Portraits/Jade-Fox.png)` (relative to the note) both work.
@@ -81,6 +95,17 @@ https://github.com/user-attachments/assets/caa28161-16bc-4219-b9c4-7d64ca203d6f
   time on the button.
 - «Encore 1 minute» lengthens it in place rather than resetting it.
 - Keeps burning through scene changes, INFO and blanking.
+
+**Session recap**
+- `Brigade.md` at the campaign root: for each session, newest first, what was on the
+  players' screen, in order, and for how long — then the same ranked by time on screen, the
+  best proxy there is for what the session was really about.
+- Read it in Obsidian: every note and image is a link, and every note shown gets a backlink.
+- Recorded only while a player display is connected, so preparing at home never counts.
+- A session is anything with no gap over **6 hours**, so evenings past midnight stay whole;
+  anything under **30 minutes** is a test and is left out.
+- A raw image shown by mistake counts under the note that presents it.
+- Survives a crash: the last panel is closed at the last once-a-minute heartbeat.
 
 **Deliberately absent** — no import, no database, no account, no network, no permissions, no
 proprietary format. Delete Brigade and the campaign folder is still an ordinary folder.
@@ -161,8 +186,16 @@ The phase is a mean-synodic model, accurate to about a day.
 Campaign content is read where it lies and never copied, moved or modified. `Campagne.md` and
 your notes are yours — Brigade reads them and never writes to them.
 
-The single file Brigade creates is `.brigade/slots.json` in the campaign root: the six slots
-as paths relative to that root, readable and Git-diffable. Commit it or ignore it.
+Brigade creates three files, and only these:
+
+- `Brigade.md`, the session recap, once there has been a session worth listing. It is marked
+  `generated_by: Brigade` and rewritten freely. A `Brigade.md` without that mark is yours:
+  Brigade never overwrites it, and says so on the GM screen.
+- `.brigade/journal.tsv`, what the players saw and when — the record `Brigade.md` is rebuilt
+  from. One line per change.
+- `.brigade/slots.json`, the six slots as paths relative to the campaign root.
+
+All three are readable and Git-diffable. Commit them or ignore them.
 
 ## Building
 

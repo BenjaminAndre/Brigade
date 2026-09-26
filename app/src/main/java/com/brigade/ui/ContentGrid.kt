@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -29,9 +28,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.brigade.R
+import com.brigade.content.ContentId
 import com.brigade.content.ContentItem
 import com.brigade.presentation.SlotBankState
 import com.brigade.presentation.SlotContent
+import com.brigade.ui.theme.ImageCaptionScrim
+import com.brigade.ui.theme.OnImageCaption
 
 /**
  * The content browser.
@@ -63,6 +65,7 @@ fun ContentGrid(
         items(browsing.documents, key = { "n:" + it.id.value }) { note ->
             NoteCell(
                 item = note,
+                image = browsing.noteImages[note.id],
                 assignedSlot = bank.slotNumberFor(note),
                 onClick = { onImageTapped(note) },
             )
@@ -101,40 +104,74 @@ private fun SlotBankState.slotNumberFor(item: ContentItem): Int? = slots.firstOr
 }?.id?.index?.plus(1)
 
 /**
- * A note in the browser: filename only, no thumbnail.
+ * A note in the browser, drawn with the image recalling it would present.
  *
- * Drawing each note's first linked image would mean reading every note in the folder to paint
- * one screen — fifty notes, fifty file reads, on every scroll into a new folder. Slot
- * mini-previews *do* show the image, because there are exactly six of them and they are
- * already resolved.
+ * Until its note has been read — or when it links no image — the cell shows the name alone,
+ * so the grid is usable the moment the folder lists and thumbnails fill in behind. With an
+ * image it reads like an image cell, but keeps the note's badge and tinted border: tapping it
+ * presents a note, bar and all, not just the picture.
  */
 @Composable
-private fun NoteCell(item: ContentItem, assignedSlot: Int?, onClick: () -> Unit) {
+private fun NoteCell(
+    item: ContentItem,
+    image: ContentId?,
+    assignedSlot: Int?,
+    onClick: () -> Unit,
+) {
+    val name = item.displayName.substringBeforeLast('.')
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(RoundedCornerShape(6.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            // surfaceVariant, not black, behind a thumbnail still loading: a black square in a
+            // paper grid reads as a hole.
+            .background(if (image != null) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface)
             .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-            .clickable(onClick = onClick)
-            .padding(8.dp),
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = item.displayName.substringBeforeLast('.'),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-            maxLines = 4,
-            overflow = TextOverflow.Ellipsis,
-        )
+        if (image != null) {
+            AsyncImage(
+                model = image.value,
+                contentDescription = name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+
+            Text(
+                text = name,
+                style = MaterialTheme.typography.labelSmall,
+                color = OnImageCaption,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .background(ImageCaptionScrim)
+                    // Room on the right for the badge, which sits over this strip.
+                    .padding(start = 6.dp, end = 28.dp, top = 3.dp, bottom = 3.dp),
+            )
+        } else {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                maxLines = 4,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(8.dp),
+            )
+        }
 
         Text(
             text = stringResource(R.string.browser_note_badge),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.align(Alignment.BottomEnd),
+            color = if (image != null) OnImageCaption else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(horizontal = 6.dp, vertical = 3.dp),
         )
 
         if (assignedSlot != null) {
@@ -144,6 +181,7 @@ private fun NoteCell(item: ContentItem, assignedSlot: Int?, onClick: () -> Unit)
                 color = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier
                     .align(Alignment.TopStart)
+                    .padding(4.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(MaterialTheme.colorScheme.primary)
                     .padding(horizontal = 6.dp, vertical = 2.dp),
@@ -187,7 +225,7 @@ private fun ImageCell(
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(RoundedCornerShape(6.dp))
-            .background(Color.Black)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick),
     ) {
         AsyncImage(
@@ -216,13 +254,13 @@ private fun ImageCell(
         Text(
             text = item.displayName,
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White,
+            color = OnImageCaption,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .background(Color.Black.copy(alpha = 0.6f))
+                .background(ImageCaptionScrim)
                 .padding(horizontal = 6.dp, vertical = 3.dp),
         )
     }
