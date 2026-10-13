@@ -6,11 +6,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -44,17 +45,19 @@ import com.brigade.presentation.TimerOverlay
 import java.util.Locale
 import kotlinx.coroutines.delay
 
-private val BAR_HEIGHT = 84.dp
-private val MODE_BUTTON_WIDTH = 88.dp
+private val SLOT_ROW_HEIGHT = 76.dp
+private val ACTION_ROW_HEIGHT = 48.dp
 
 /**
- * The control bar: the permanent blank control plus the six recall slots (§6.1).
+ * The control bar, in two rows (§6.1).
  *
- * Everything here is sized for use in dim light, mid-sentence, without looking down —
- * hence the large targets and the deliberately loud blank button.
+ *  - **The six slots**: *what* is shown.
+ *  - **The actions**: INFO, SABLIER, ORACLE, SÉANCES — everything that is not a choice of
+ *    picture. Equal widths, so a new action is one more button and no layout change.
  *
- * The highlight marks the slot that is *live*, which is a readout of presentation
- * state, not of whatever was tapped last.
+ * Everything here is sized for use in dim light, mid-sentence, without looking down. The
+ * highlight marks the slot that is *live*, which is a readout of presentation state, not of
+ * whatever was tapped last.
  */
 @Composable
 fun SlotBar(
@@ -65,75 +68,88 @@ fun SlotBar(
     onClear: (SlotId) -> Unit,
     onToggleInfo: () -> Unit,
     onOpenTimer: () -> Unit,
+    onOpenOracle: () -> Unit,
+    onOpenSeances: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier.height(BAR_HEIGHT),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // The one mode button, visually separate from the six recall slots: it changes what
-        // KIND of thing is shown, they choose which image.
-        //
-        // Always enabled, even with no campaign info configured — INFO is also the blank
-        // control, and "nothing specific, I'm preparing" is exactly when a GM reaches for it.
-        Button(
-            onClick = onToggleInfo,
-            shape = RoundedCornerShape(6.dp),
-            colors = if (active is ActiveControl.Info) {
-                ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                )
-            } else {
-                ButtonDefaults.filledTonalButtonColors()
-            },
-            modifier = Modifier
-                .width(MODE_BUTTON_WIDTH)
-                .fillMaxHeight(),
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.height(SLOT_ROW_HEIGHT),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = stringResource(R.string.control_info),
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
+            bank.slots.forEach { slot ->
+                SlotCell(
+                    slot = slot,
+                    isLive = active is ActiveControl.Slot && active.id.index == slot.id.index,
+                    onRecall = { onRecall(slot.id) },
+                    onClear = { onClear(slot.id) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                )
+            }
         }
 
-        Button(
-            onClick = onOpenTimer,
-            shape = RoundedCornerShape(6.dp),
-            colors = if (timer != null) {
-                ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiary,
-                    contentColor = MaterialTheme.colorScheme.onTertiary,
-                )
-            } else {
-                ButtonDefaults.filledTonalButtonColors()
-            },
-            modifier = Modifier
-                .width(MODE_BUTTON_WIDTH)
-                .fillMaxHeight(),
+        Row(
+            modifier = Modifier.height(ACTION_ROW_HEIGHT),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            // Always enabled, even with no campaign info configured — INFO is also the blank
+            // control, and "nothing specific, I'm preparing" is exactly when a GM reaches for it.
+            ActionButton(
+                label = stringResource(R.string.control_info),
+                lit = active is ActiveControl.Info,
+                onClick = onToggleInfo,
+            )
+
             // The players get a stick, the GM gets the number. Text is free on this side,
             // and knowing it is 1:47 rather than "about a third left" is worth having.
-            Text(
-                text = rememberRemainingLabel(timer) ?: stringResource(R.string.control_timer),
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
+            ActionButton(
+                label = rememberRemainingLabel(timer) ?: stringResource(R.string.control_timer),
+                lit = timer != null,
+                litWithTertiary = true,
+                onClick = onOpenTimer,
             )
-        }
 
-        bank.slots.forEach { slot ->
-            SlotCell(
-                slot = slot,
-                isLive = active is ActiveControl.Slot && active.id.index == slot.id.index,
-                onRecall = { onRecall(slot.id) },
-                onClear = { onClear(slot.id) },
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-            )
+            ActionButton(label = stringResource(R.string.control_oracle), lit = false, onClick = onOpenOracle)
+
+            ActionButton(label = stringResource(R.string.control_seances), lit = false, onClick = onOpenSeances)
         }
+    }
+}
+
+/** One action: tonal at rest, filled while what it controls is on. */
+@Composable
+private fun RowScope.ActionButton(
+    label: String,
+    lit: Boolean,
+    onClick: () -> Unit,
+    litWithTertiary: Boolean = false,
+) {
+    Button(
+        onClick = onClick,
+        shape = RoundedCornerShape(6.dp),
+        colors = when {
+            !lit -> ButtonDefaults.filledTonalButtonColors()
+            litWithTertiary -> ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.tertiary,
+                contentColor = MaterialTheme.colorScheme.onTertiary,
+            )
+            else -> ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            )
+        },
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight(),
+    ) {
+        Text(
+            text = label,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+        )
     }
 }
 

@@ -28,7 +28,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.brigade.CampaignState
 import com.brigade.R
-import com.brigade.RecapProblem
 import com.brigade.content.ContentItem
 import com.brigade.display.PlayerDisplayStatus
 import com.brigade.presentation.PresentationState
@@ -54,10 +53,14 @@ fun GmScreen(
     campaignDateIso: String?,
     campaign: CampaignState,
     slotWriteFailed: Boolean,
-    recapProblem: RecapProblem?,
+    journalWriteFailed: Boolean,
     onChooseFolder: () -> Unit,
     onJumpTo: (Int) -> Unit,
     onRefresh: () -> Unit,
+    onOpenSeances: () -> Unit,
+    onHistory: (ContentItem) -> Unit,
+    loadOracleTables: suspend () -> List<ContentItem>?,
+    loadOracleEntries: suspend (ContentItem) -> List<String>,
     onEnterFolder: (ContentItem) -> Unit,
     onShowNow: (ContentItem) -> Unit,
     onAssign: (SlotId, ContentItem) -> Unit,
@@ -90,6 +93,7 @@ fun GmScreen(
 
     var pendingItem by remember { mutableStateOf<ContentItem?>(null) }
     var timerDialogOpen by remember { mutableStateOf(false) }
+    var oracleOpen by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.padding(horizontal = 8.dp)) {
         FolderBar(
@@ -122,14 +126,9 @@ fun GmScreen(
             )
         }
 
-        recapProblem?.let { problem ->
+        if (journalWriteFailed) {
             Text(
-                text = stringResource(
-                    when (problem) {
-                        RecapProblem.WriteFailed -> R.string.error_recap_save
-                        RecapProblem.NotOurs -> R.string.error_recap_not_ours
-                    },
-                ),
+                text = stringResource(R.string.error_journal_save),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(vertical = 4.dp),
@@ -222,9 +221,19 @@ fun GmScreen(
             onClear = onClearSlot,
             onToggleInfo = onToggleInfo,
             onOpenTimer = { timerDialogOpen = true },
+            onOpenOracle = { oracleOpen = true },
+            onOpenSeances = onOpenSeances,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
+        )
+    }
+
+    if (oracleOpen) {
+        OracleDialog(
+            loadTables = loadOracleTables,
+            loadEntries = loadOracleEntries,
+            onDismiss = { oracleOpen = false },
         )
     }
 
@@ -257,6 +266,10 @@ fun GmScreen(
             },
             onAssign = { slot ->
                 onAssign(slot, item)
+                pendingItem = null
+            },
+            onHistory = {
+                onHistory(item)
                 pendingItem = null
             },
             onDismiss = { pendingItem = null },

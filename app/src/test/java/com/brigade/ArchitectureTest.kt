@@ -38,8 +38,8 @@ class ArchitectureTest {
         ),
         Rule("presentation", listOf("android.", "androidx.", "coil3.", "org.yaml", "com.brigade.ui")),
 
-        // The session recap: which sessions, how long, what Brigade.md says. Pure, because
-        // the rules the GM set — six hours, thirty minutes, notes over raw images — are the
+        // Séances: which day, how long, what the charts say. Pure, because the rules the GM
+        // set — days from 06:00, notes over raw images, five slices and «Autres» — are the
         // whole feature, and are only worth anything if the JVM tests can hold them.
         Rule(
             "journal",

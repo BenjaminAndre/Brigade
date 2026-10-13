@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The only files Brigade hands to another app: the Séances image being shared, written to
+    the app's own cache. Nothing in the campaign folder is ever exposed through here.
+    The directory must match SHARE_DIRECTORY in SeancesScreen.kt.
+-->
+<paths>
+    <cache-path name="share" path="share/" />
+</paths>

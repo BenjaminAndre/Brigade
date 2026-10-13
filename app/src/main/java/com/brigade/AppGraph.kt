@@ -8,7 +8,6 @@ import com.brigade.content.ContentItem
 import com.brigade.content.ContentKind
 import com.brigade.content.ContentPath
 import com.brigade.content.ContentRepository
-import com.brigade.content.RECAP_FILE_NAME
 import com.brigade.content.RootStore
 import com.brigade.content.saf.CampaignFile
 import com.brigade.content.saf.DocumentTreeSource
@@ -21,12 +20,12 @@ import com.brigade.display.PresentationPlayerDisplayHost
 import com.brigade.journal.HeartbeatStore
 import com.brigade.journal.JournalCodec
 import com.brigade.journal.JournalEntry
+import com.brigade.journal.HiddenDays
 import com.brigade.journal.Panel
-import com.brigade.journal.RecapLabels
-import com.brigade.journal.RecapMarkdown
-import com.brigade.journal.Session
-import com.brigade.journal.SessionRecap
+import com.brigade.journal.Seances
+import com.brigade.journal.SeancesData
 import com.brigade.journal.SessionRecorder
+import com.brigade.journal.Showing
 import com.brigade.render.PlayerImageModel
 import com.brigade.render.playerImageModel
 import com.brigade.presentation.CampaignInfo
@@ -45,22 +44,17 @@ import com.brigade.presentation.toState
 import com.brigade.storage.PrefsHeartbeatStore
 import com.brigade.storage.PrefsRootStore
 import com.brigade.storage.PrefsSnapshotStore
+import java.time.LocalDate
 import java.time.ZoneId
-import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -79,25 +73,10 @@ import kotlinx.coroutines.withContext
  */
 enum class CampaignState { Restoring, None, Open }
 
-/** Why `Brigade.md` is not being kept up to date. Shown on the GM screen, never a crash. */
-enum class RecapProblem {
-    /** The campaign folder refused a write — typically a grant that is read-only. */
-    WriteFailed,
-
-    /** A `Brigade.md` exists that Brigade did not write. It is the GM's, and left alone. */
-    NotOurs,
-}
-
-/** The session journal, in `.brigade/` beside the slot bank. */
-private const val JOURNAL_FILE_NAME = "journal.tsv"
+/** The session journal and the Séances settings, in `.brigade/` beside the slot bank. */
 private const val BRIGADE_DIRECTORY = ".brigade"
-
-/**
- * How long the recap waits for the screen to settle before rewriting `Brigade.md`, so that
- * flicking through three slots is one write and not three — and Obsidian, open beside
- * Brigade, reloads the file once.
- */
-private const val RECAP_SETTLE_MILLIS = 3_000L
+private const val JOURNAL_FILE_NAME = "journal.tsv"
+private const val SEANCES_FILE_NAME = "seances.json"
 
 /**
  * Decode size used while no player display is attached.
@@ -161,25 +140,27 @@ class AppGraph(private val app: Application) {
 
     private var slotStore: SafSlotStore? = null
 
-    // ---- Session recap state ----------------------------------------------------
+    // ---- Séances state -------------------------------------------------------------
     //
-    // Per campaign, replaced by openRoot. The journal is the record; Brigade.md is rendered
-    // from it and can always be rebuilt, which is why the recap can be rewritten freely.
+    // Per campaign, replaced by openRoot. Everything lives in .brigade/: the journal is the
+    // record, seances.json the days the GM chose to hide. Nothing outside it is ever written.
 
     private val heartbeats: HeartbeatStore = PrefsHeartbeatStore(app)
     private var journalFile: SafTextFile? = null
-    private var recapFile: SafTextFile? = null
+    private var seancesFile: SafTextFile? = null
     private var recorder: SessionRecorder? = null
     private var recorderJob: Job? = null
 
-    private val _recapProblem = MutableStateFlow<RecapProblem?>(null)
-    val recapProblem: StateFlow<RecapProblem?> = _recapProblem.asStateFlow()
+    /** True when the journal could not be written to `.brigade/`. */
+    private val _journalWriteFailed = MutableStateFlow(false)
+    val journalWriteFailed: StateFlow<Boolean> = _journalWriteFailed.asStateFlow()
 
-    /** Conflated requests to rewrite the recap; see [RECAP_SETTLE_MILLIS]. */
-    private val recapRequests = MutableSharedFlow<Unit>(
-        extraBufferCapacity = 1,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST,
-    )
+    /**
+     * The picture each note or image is drawn with on the Séances screen, kept between
+     * refreshes: resolving a note's picture reads the note, and the screen refreshes live.
+     * Cleared by *Actualiser*, like everything else read from the campaign.
+     */
+    private val seancePictures = HashMap<Panel, ContentId?>()
 
     /**
      * The one image request builder both render targets use.
@@ -211,16 +192,6 @@ class AppGraph(private val app: Application) {
                 }
             }
             .launchIn(appScope)
-
-        appScope.launch {
-            // collectLatest restarts the wait on every request, so a burst of changes renders
-            // once. The render itself is NonCancellable: a request arriving mid-write must not
-            // cut Brigade.md off halfway through.
-            recapRequests.collectLatest {
-                delay(RECAP_SETTLE_MILLIS)
-                withContext(NonCancellable) { renderRecap() }
-            }
-        }
 
         appScope.launch {
             // The snapshot is restored BEFORE the campaign is opened, because `restore`
@@ -293,7 +264,7 @@ class AppGraph(private val app: Application) {
         startRecording(treeUri)
     }
 
-    // ---- Session recap ------------------------------------------------------------
+    // ---- Séances --------------------------------------------------------------------
 
     private suspend fun startRecording(treeUri: Uri) {
         val campaign = treeUri.toString()
@@ -306,14 +277,15 @@ class AppGraph(private val app: Application) {
             allowPrefixMatch = true,
         )
         journalFile = journal
-        recapFile = SafTextFile(
+        seancesFile = SafTextFile(
             resolver = app.contentResolver,
             treeUri = treeUri,
-            directory = null,
-            name = RECAP_FILE_NAME,
-            mimeType = "text/markdown",
-            allowPrefixMatch = false,
+            directory = BRIGADE_DIRECTORY,
+            name = SEANCES_FILE_NAME,
+            mimeType = "application/json",
+            allowPrefixMatch = true,
         )
+        seancePictures.clear()
 
         // A panel left open by a Brigade killed mid-session ends at its last heartbeat,
         // before the new recorder writes anything after it.
@@ -323,10 +295,7 @@ class AppGraph(private val app: Application) {
 
         val next = SessionRecorder(
             clock = System::currentTimeMillis,
-            append = { entry ->
-                appendToJournal(journal, entry)
-                requestRecap()
-            },
+            append = { entry -> appendToJournal(journal, entry) },
             heartbeat = { at -> heartbeats.save(campaign, at) },
         )
         recorder = next
@@ -335,7 +304,6 @@ class AppGraph(private val app: Application) {
             state = presentation.state,
             attached = playerDisplay.status.map { it is PlayerDisplayStatus.Attached },
         )
-        requestRecap()
     }
 
     private suspend fun stopRecording() {
@@ -347,75 +315,83 @@ class AppGraph(private val app: Application) {
 
     private suspend fun appendToJournal(journal: SafTextFile, entry: JournalEntry) {
         val line = JournalCodec.encode(entry) ?: return
-        if (!journal.append("$line\n", headerIfNew = JournalCodec.FILE_HEADER + "\n")) {
-            _recapProblem.value = RecapProblem.WriteFailed
-        }
-    }
-
-    private fun requestRecap() {
-        recapRequests.tryEmit(Unit)
+        _journalWriteFailed.value =
+            !journal.append("$line\n", headerIfNew = JournalCodec.FILE_HEADER + "\n")
     }
 
     /**
-     * Rewrites `Brigade.md` from the journal.
+     * Everything the Séances screen draws, read fresh from the journal.
      *
-     * Never overwrites a `Brigade.md` it did not write, and never creates one before there is
-     * a session worth a file — so the campaign root stays exactly as the GM left it until a
-     * real evening has happened.
+     * Live: the panel on screen right now counts up to now, so a test shows up the moment
+     * something has been shown.
      */
-    private suspend fun renderRecap() {
-        val journal = journalFile ?: return
-        val recap = recapFile ?: return
-        val repository = _repository.value ?: return
+    suspend fun loadSeances(): SeancesData {
+        val repository = _repository.value ?: return SeancesData.EMPTY
+        val entries = journalFile?.read()?.getOrNull()?.let(JournalCodec::decodeAll).orEmpty()
+        val hidden = seancesFile?.read()?.getOrNull()?.let(HiddenDays::decode).orEmpty()
 
-        val entries = journal.read().getOrNull()?.let(JournalCodec::decodeAll) ?: return
         val now = System.currentTimeMillis()
-        val sessions = SessionRecap.sessions(
-            SessionRecap.showings(entries, openUntil = if (recorder?.isOpen == true) now else null),
-        )
+        val showings = Seances.showings(entries, openUntil = if (recorder?.isOpen == true) now else null)
+        val byDay = Seances.byDay(showings, attributeImages(repository, showings), ZoneId.systemDefault())
 
-        val existing = recap.read().getOrElse {
-            _recapProblem.value = RecapProblem.WriteFailed
-            return
+        val pictures = byDay.values.flatMap { it.keys }.distinct().associateWith { panel ->
+            seancePictures.getOrPut(panel) { pictureOf(repository, panel) }
         }
-        if (existing != null && !RecapMarkdown.isOurs(existing)) {
-            _recapProblem.value = RecapProblem.NotOurs
-            return
-        }
-        if (existing == null && sessions.isEmpty()) return
+        return SeancesData(byDay = byDay, hidden = hidden, pictures = pictures.filterValuesNotNull())
+    }
 
-        val text = RecapMarkdown.render(
-            sessions = sessions,
-            noteOf = attributeImages(repository, sessions),
-            labels = recapLabels(),
-            zone = ZoneId.systemDefault(),
-            // The strings are French (§21), so the dates are too — as in CampaignInfo.
-            locale = Locale.FRENCH,
-        )
-        // Unchanged: leave the file alone, so Obsidian beside Brigade does not reload it for
-        // nothing.
-        if (text == existing) {
-            _recapProblem.value = null
-            return
-        }
-        _recapProblem.value = if (recap.write(text)) null else RecapProblem.WriteFailed
+    // ---- Oracles ------------------------------------------------------------------
+
+    /** The campaign's oracle tables, or null when it has no `Oracles/` folder. */
+    suspend fun oracleTables(): List<ContentItem>? = _repository.value?.oracleTables()
+
+    /** A table's entries, read afresh: the GM may be editing it in Obsidian beside Brigade. */
+    suspend fun oracleEntries(table: ContentItem): List<String> =
+        _repository.value?.readNote(table)?.listItems.orEmpty()
+
+    /** Hides a day from every Séances view, or shows it again. Saved in `.brigade/seances.json`. */
+    suspend fun setDayHidden(day: LocalDate, hidden: Boolean) {
+        val file = seancesFile ?: return
+        val current = file.read().getOrNull()?.let(HiddenDays::decode).orEmpty()
+        val next = if (hidden) current + day else current - day
+        if (next != current) file.write(HiddenDays.encode(next))
     }
 
     /**
-     * For each raw image in the recap, the note that presents it — so an image shown by
+     * The note or image a browser item stands for in the Séances history — for an image a note
+     * presents, that note, since that is where its time on screen was filed.
+     */
+    suspend fun subjectOf(item: ContentItem, folder: ContentPath): Panel {
+        val path = ContentPath.of(folder.segments + item.displayName)
+        if (item.kind == ContentKind.Markdown) return Panel.Note(path)
+
+        val repository = _repository.value ?: return Panel.Image(path)
+        val note = runCatching { repository.notesByImage()[item.id] }.getOrNull()
+        return note?.let { Panel.Note(it) } ?: Panel.Image(path)
+    }
+
+    /** What a note or image is drawn with: the image itself, or the one the note presents. */
+    private suspend fun pictureOf(repository: ContentRepository, panel: Panel): ContentId? = when (panel) {
+        is Panel.Image -> repository.resolve(panel.path)?.id
+        is Panel.Note -> repository.resolve(panel.path)
+            ?.let { repository.readNote(it) }
+            ?.let { repository.firstImage(it, panel.path.parent) }
+            ?.id
+        Panel.Info, Panel.Black -> null
+    }
+
+    /**
+     * For each raw image in the journal, the note that presents it — so an image shown by
      * mistake instead of its note is filed under that note.
      *
      * Reads every note in the campaign the first time, which is why it is skipped outright
-     * when no session shows a raw image at all.
+     * when no raw image was ever shown.
      */
     private suspend fun attributeImages(
         repository: ContentRepository,
-        sessions: List<Session>,
+        showings: List<Showing>,
     ): Map<ContentPath, ContentPath> {
-        val images = sessions
-            .flatMap { it.showings }
-            .mapNotNull { (it.panel as? Panel.Image)?.path }
-            .distinct()
+        val images = showings.mapNotNull { (it.panel as? Panel.Image)?.path }.distinct()
         if (images.isEmpty()) return emptyMap()
 
         val notesByImage = runCatching { repository.notesByImage() }.getOrElse { return emptyMap() }
@@ -425,21 +401,8 @@ class AppGraph(private val app: Application) {
         }.toMap()
     }
 
-    private fun recapLabels() = RecapLabels(
-        title = app.getString(R.string.recap_title),
-        notice = app.getString(R.string.recap_notice),
-        columnStart = app.getString(R.string.recap_column_start),
-        columnPanel = app.getString(R.string.recap_column_panel),
-        columnDuration = app.getString(R.string.recap_column_duration),
-        columnTotal = app.getString(R.string.recap_column_total),
-        longest = app.getString(R.string.recap_longest),
-        info = app.getString(R.string.control_info),
-        black = app.getString(R.string.recap_black),
-        sessionHeading = app.getString(R.string.recap_session_heading),
-        hours = app.getString(R.string.recap_duration_hours),
-        minutes = app.getString(R.string.recap_duration_minutes),
-        seconds = app.getString(R.string.recap_duration_seconds),
-    )
+    private fun <K, V : Any> Map<K, V?>.filterValuesNotNull(): Map<K, V> =
+        mapNotNull { (key, value) -> value?.let { key to it } }.toMap()
 
     private suspend fun restoreRoot(): Uri? = withContext(Dispatchers.IO) {
         val saved = rootStore.load()?.let(Uri::parse) ?: return@withContext null
@@ -550,9 +513,8 @@ class AppGraph(private val app: Application) {
      */
     fun refreshCampaign() {
         appScope.launch { reloadCampaignConfig() }
-        // The recap too: it catches a Brigade.md deleted or moved aside in Obsidian, and on
-        // Actualiser it re-files raw images against notes the GM has just edited.
-        requestRecap()
+        // A note edited in Obsidian may now present a different picture on the Séances screen.
+        seancePictures.clear()
     }
 
     // ---- Timer -------------------------------------------------------------------

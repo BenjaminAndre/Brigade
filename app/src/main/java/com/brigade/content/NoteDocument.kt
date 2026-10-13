@@ -20,4 +20,6 @@ data class NoteDocument(
     val faction: String? = null,
     /** Every image target in the body, in order, unfiltered. */
     val imageLinks: List<String> = emptyList(),
+    /** The note's entries as an oracle table — see [Oracle.entries]. */
+    val listItems: List<String> = emptyList(),
 )

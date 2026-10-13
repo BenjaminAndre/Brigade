@@ -6,6 +6,7 @@ import com.brigade.content.ContentItem
 import com.brigade.content.Markdown
 import com.brigade.content.NoteDocument
 import com.brigade.content.NoteSource
+import com.brigade.content.Oracle
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -55,6 +56,7 @@ class NoteReader(
                 element = properties[KEY_ELEMENT],
                 faction = properties[KEY_FACTION],
                 imageLinks = Markdown.imageLinks(text),
+                listItems = Oracle.entries(text),
             )
         }
 

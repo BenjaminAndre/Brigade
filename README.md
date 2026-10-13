@@ -96,16 +96,30 @@ https://github.com/user-attachments/assets/caa28161-16bc-4219-b9c4-7d64ca203d6f
 - «Encore 1 minute» lengthens it in place rather than resetting it.
 - Keeps burning through scene changes, INFO and blanking.
 
-**Session recap**
-- `Brigade.md` at the campaign root: for each session, newest first, what was on the
-  players' screen, in order, and for how long — then the same ranked by time on screen, the
-  best proxy there is for what the session was really about.
-- Read it in Obsidian: every note and image is a link, and every note shown gets a backlink.
+**Control bar** — two rows: the six slots, then the actions INFO · SABLIER · ORACLE · SÉANCES.
+
+**ORACLE**
+- Random tables as ordinary notes in `Oracles/` at the campaign root. Pick one, read an entry,
+  reroll or leave. Only you see it.
+- Each top-level list line (`- …`) is an entry; headings and paragraphs are never rolled, and
+  indented lines are notes. Repeat a line to weight it.
+
+**Séances**
+- What the players had on screen, per day, and for how long — the best proxy there is for
+  what a session was really about. Opened by **SÉANCES** in the action row.
+- **Barres** — what a day was about: one bar per note or image, longest first.
+- **Camembert** — what mattered most: up to six slices filled with their pictures (or names),
+  the rest as «Autres». Tap a slice to see the picture large.
+- **Historique** — when was a note relevant: one bar per day. From any item's menu in the
+  browser, or by tapping a bar.
+- Day chips switch days on and off for all three views — keep only campaign days, then flick
+  between NPCs.
+- **Partager** sends the current view as an image through Android's share sheet — to Discord,
+  for instance.
+- A day runs from 06:00 to 06:00, so evenings past midnight stay whole. Live: the session in
+  progress counts up as you play.
 - Recorded only while a player display is connected, so preparing at home never counts.
-- A session is anything with no gap over **6 hours**, so evenings past midnight stay whole;
-  anything under **30 minutes** is a test and is left out.
-- A raw image shown by mistake counts under the note that presents it.
-- Survives a crash: the last panel is closed at the last once-a-minute heartbeat.
+  INFO and black are left out; a raw image counts under the note that presents it.
 
 **Deliberately absent** — no import, no database, no account, no network, no permissions, no
 proprietary format. Delete Brigade and the campaign folder is still an ordinary folder.
@@ -186,14 +200,11 @@ The phase is a mean-synodic model, accurate to about a day.
 Campaign content is read where it lies and never copied, moved or modified. `Campagne.md` and
 your notes are yours — Brigade reads them and never writes to them.
 
-Brigade creates three files, and only these:
+Brigade writes only inside `.brigade/` at the campaign root, and only these:
 
-- `Brigade.md`, the session recap, once there has been a session worth listing. It is marked
-  `generated_by: Brigade` and rewritten freely. A `Brigade.md` without that mark is yours:
-  Brigade never overwrites it, and says so on the GM screen.
-- `.brigade/journal.tsv`, what the players saw and when — the record `Brigade.md` is rebuilt
-  from. One line per change.
-- `.brigade/slots.json`, the six slots as paths relative to the campaign root.
+- `slots.json`, the six slots as paths relative to the campaign root.
+- `journal.tsv`, what the players saw and when — one line per change, read by Séances.
+- `seances.json`, the days you switched off in Séances.
 
 All three are readable and Git-diffable. Commit them or ignore them.
 

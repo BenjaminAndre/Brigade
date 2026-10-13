@@ -5,15 +5,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * The session recap Brigade writes at the campaign root.
- *
- * Named here, in `content/`, because it is the one campaign-root file the browser hides: it
- * is Brigade's own record, not content to present, and a note that recalled as black with
- * «Brigade» in the bar would only be a trap at the table.
- */
-const val RECAP_FILE_NAME: String = "Brigade.md"
-
-/**
  * Caching, filtering and ordering over a [ContentSource].
  *
  * Lives on the application graph, not on a ViewModel, so the cache survives Activity
@@ -41,13 +32,11 @@ class ContentRepository(
     suspend fun children(folder: ContentId, refresh: Boolean = false): List<ContentItem> =
         mutex.withLock {
             if (!refresh) cache[folder]?.let { return@withLock it }
-            val atRoot = folder == source.rootId
             val listed = source.listChildren(folder)
                 // Hides .brigade/ and .git/ from the browser. §2.3 keeps application state out
                 // of the way of campaign content, and this is the other half of that bargain:
                 // the GM never has to look at it.
                 .filterNot { it.displayName.startsWith(".") }
-                .filterNot { atRoot && it.displayName == RECAP_FILE_NAME }
                 .sortedWith(ContentOrder.comparator)
             cache[folder] = listed
             listed
@@ -186,7 +175,7 @@ class ContentRepository(
     /**
      * Every image a note presents, mapped to that note — [firstImage], reversed.
      *
-     * For the session recap, which files a raw image shown by mistake under the note it
+     * For the Séances screen, which files a raw image shown by mistake under the note it
      * belongs to, even when that note was never shown itself.
      *
      * Reads every note in the campaign, so unlike [readNote] it is kept: built on first use,
@@ -226,6 +215,18 @@ class ContentRepository(
                 }
             }
         }
+    }
+
+    /**
+     * The oracle tables: every note directly in `Oracles/` at the campaign root, in natural
+     * order. Null when the campaign has no such folder, which the GM is told rather than shown
+     * an empty list.
+     */
+    suspend fun oracleTables(): List<ContentItem>? {
+        val folder = children(source.rootId).firstOrNull {
+            it.kind == ContentKind.Folder && it.displayName.equals(ORACLES_FOLDER, ignoreCase = true)
+        } ?: return null
+        return children(folder.id).filter { it.kind == ContentKind.Markdown }
     }
 
     suspend fun isAvailable(): Boolean = source.isAvailable()

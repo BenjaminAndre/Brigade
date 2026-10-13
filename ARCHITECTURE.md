@@ -16,7 +16,7 @@ never violated.
 content/       → kotlin + coroutines only.  NO android.*, NO Compose, NO presentation/
                  (exception: content/saf/** — the single Android-touching leaf)
 presentation/  → content/ (ContentId, ContentPath) + coroutines.  NO android.*, NO Compose
-journal/       → presentation/, content/ + coroutines.  NO android.*, NO Compose — the recap
+journal/       → presentation/, content/ + coroutines.  NO android.*, NO Compose — Séances
 render/        → presentation/, content/, Compose, Coil.  NO ui/, NO display/
 display/       → render/, presentation/, android.*.       NO ui/
 storage/       → adapters: android.* + the interfaces in content/, presentation/ and journal/
@@ -188,7 +188,7 @@ projector previews as 16:10 (§16 Trap 6).
 | Recorder heartbeat | app-private `SharedPreferences` | overwritten every minute; only there to end a panel after a crash |
 | **Slot bank** | `<campaign>/.brigade/slots.json` | points at campaign content, so it travels with it (§2.3) |
 | **Session journal** | `<campaign>/.brigade/journal.tsv` | what the players saw; append-only, travels with the campaign |
-| **Session recap** | `<campaign>/Brigade.md` | rendered from the journal for the GM to read in Obsidian (§25) |
+| **Hidden days** | `<campaign>/.brigade/seances.json` | which recorded days the Séances screen leaves out |
 
 Slots store **paths relative to the campaign root, never document URIs**. A document URI
 is provider-specific and survives neither a folder move, a reinstall, nor the campaign
@@ -197,11 +197,10 @@ the campaign folder at all. The cost is that a path must be resolved against the
 load; the benefit is that a slot bank is as portable as the campaign, and readable in a
 Git diff.
 
-Nothing else is ever written to the campaign folder — and `Brigade.md` only when it carries
-Brigade's `generated_by: Brigade` marker, or does not exist yet. A `Brigade.md` the GM wrote is
-never touched.
+Nothing else is ever written to the campaign folder, and nothing at all outside `.brigade/`.
+(v0.6 briefly wrote a `Brigade.md` at the root; v0.7 removed it in favour of a screen.)
 
-### The session recap
+### Séances
 
 The journal is derived from presentation state, not written at each call site:
 `SessionRecorder` watches `PresentationState` and the display status, maps each state to a
@@ -213,13 +212,13 @@ journal exists.
 To name a note rather than the image it presents, the scene carries `Scene.origin`: the path
 it was presented from. GM-side like `Scene.note`, and like it ignored by `frame()`.
 
-Everything that decides what the file says — sessions split at gaps over six hours, sessions
-under thirty minutes dropped, raw images filed under their note, the Markdown itself — lives in
-`journal/`, which is plain Kotlin under the same rule as `presentation/`. `AppGraph` only reads
-the journal, asks the repository which note presents each raw image (a reverse index built
-once, and only when a raw image was shown), and writes the result. Rewrites wait three seconds
-for the screen to settle, and are skipped when nothing changed, so Obsidian open beside
-Brigade reloads the file once per change rather than on every tap.
+Everything that decides what the screen shows — days from 06:00 to 06:00, INFO and black left
+out, raw images filed under their note, five slices and «Autres» — lives in `journal/Seances`,
+plain Kotlin under the same rule as `presentation/`. `AppGraph.loadSeances` only reads the
+journal and the hidden days, asks the repository which note presents each raw image (a reverse
+index built once, and only when a raw image was shown), and which picture to draw for each.
+The screen draws its charts itself — no chart library — and shares by recording its own view
+into a `GraphicsLayer`, so what is sent is exactly what is on screen.
 
 ## The escape hatch
 

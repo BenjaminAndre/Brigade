@@ -8,6 +8,43 @@ coarser than what follows.
 
 ---
 
+## 0.8.0 — Oracles
+
+- **ORACLE**: random tables, one Markdown note each, in `Oracles/` at the campaign root. Pick a
+  table, read one entry, *Relancer* or leave. GM-only: a roll never reaches the players'
+  screen.
+- An entry is one top-level list line (`- …` or `1. …`). Headings and paragraphs explain the
+  table without being rolled; indented lines are the GM's notes under an entry. Repeat a line
+  to make it more likely. Read afresh on every pick, so an edit in Obsidian is in the next
+  roll.
+- A reroll may land on the same line — on a yes/no table that is an answer — so a «Lancer n°»
+  counter shows it happened.
+- **The control bar is two rows**: the six slots, then the actions — INFO, SABLIER, ORACLE,
+  SÉANCES — at equal widths, so the next action is one more button. Séances moved here from
+  the folder bar.
+
+## 0.7.0 — Séances
+
+The session recap moves out of the campaign folder and onto a screen of its own.
+
+- **`Brigade.md` is gone.** Brigade writes nothing outside `.brigade/` again — the rule it
+  had before 0.6. The journal stays: it is the record everything below is read from.
+- **Séances**, beside *Actualiser*, with three views:
+  - **Barres**: a day, one bar per note or image, longest first.
+  - **Camembert**: a day, at most six slices filled with their pictures — or names, for a note
+    without one — the rest as «Autres». A tap opens the picture large.
+  - **Historique**: one note, one bar per day, empty days included. Reached from the
+    browser's item menu (*Afficher*, the six slots, *Historique*) or by tapping a bar.
+- **Day switches** for all three views at once, saved in `.brigade/seances.json`: keep only
+  campaign days, then step through NPCs to see when each one showed up.
+- **Partager** sends the current view as a PNG through Android's share sheet — Discord, or
+  anywhere. No permission, no network: the image is lent from the app's cache.
+- **Days run from 06:00 to 06:00** instead of sessions split at six-hour gaps, and there is no
+  thirty-minute minimum any more: a test shows up straight away, and the day in progress
+  counts up live.
+- INFO and black are left out of every view.
+- Charts are drawn by hand; no chart library was added.
+
 ## 0.6.0 — Récap de séance
 
 A record for the GM: `Brigade.md` at the campaign root lists, per session, what the players

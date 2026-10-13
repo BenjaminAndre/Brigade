@@ -153,30 +153,9 @@ class ContentRepositoryTest {
         assertEquals(2, reads)
     }
 
-    // ---- The session recap ---------------------------------------------------------
+    // ---- Séances --------------------------------------------------------------------
 
-    /** Brigade's own record, not content: recalling it would present black with a bar. */
-    @Test
-    fun `the recap at the campaign root is hidden from the browser`() = runTest {
-        val repository = ContentRepository(
-            FakeContentSource(
-                rootId = root,
-                tree = mapOf(
-                    root to listOf(
-                        note("fake://recap", RECAP_FILE_NAME, root.value),
-                        folder(cartes.value, "Cartes", root.value),
-                    ),
-                    cartes to listOf(note("fake://other-recap", RECAP_FILE_NAME, cartes.value)),
-                ),
-            ),
-        )
-
-        assertEquals(listOf("Cartes"), repository.children(root).map { it.displayName })
-        // Only the root one is Brigade's; a note of that name anywhere else is the GM's.
-        assertEquals(listOf(RECAP_FILE_NAME), repository.children(cartes).map { it.displayName })
-    }
-
-    /** So that a raw portrait shown by mistake is filed under its note in the recap. */
+    /** So that a raw portrait shown by mistake is filed under its note on the Séances screen. */
     @Test
     fun `each image a note presents maps back to that note`() = runTest {
         val repository = campaign(

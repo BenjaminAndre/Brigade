@@ -40,6 +40,7 @@ fun ImageActionDialog(
     bank: SlotBankState,
     onShowNow: () -> Unit,
     onAssign: (SlotId) -> Unit,
+    onHistory: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     Dialog(onDismissRequest = onDismiss) {
@@ -100,6 +101,16 @@ fun ImageActionDialog(
                             }
                         }
                     }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+
+                // When was this on the players' screen — the Séances screen's third view.
+                OutlinedButton(
+                    onClick = onHistory,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.action_history))
                 }
 
                 TextButton(

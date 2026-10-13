@@ -81,8 +81,6 @@ If Brigade needs application-specific state, keep it separate from campaign cont
 
 Prefer a small optional `.brigade/` directory for ephemeral/session-specific state rather than embedding metadata into every campaign file.
 
-*Since v0.6* there is one file outside it, requested explicitly: the session recap `Brigade.md` at the campaign root (§25). It is Brigade's own file, never one of the GM's, and Brigade refuses to overwrite a `Brigade.md` it did not write.
-
 The application must never require a proprietary database for normal operation.
 
 ---
@@ -997,36 +995,54 @@ A letterboxed image can be panned into its black bars: the viewport is of the su
 
 ---
 
-# 25. Session recap
+# 25. Séances
 
-*v0.6.* A record for the GM, not the players: after each session, `Brigade.md` at the campaign root lists what was on the players' screen, in order, and for how long. Time on screen is a good proxy for what the session was actually about, and the recap is read in Obsidian, where every note in it is a link.
+*v0.6, reworked in v0.7.* A record for the GM, not the players: what was on the players' screen, per day, and for how long. Time on screen is a good proxy for what a session was actually about.
+
+*v0.6 wrote it as `Brigade.md` at the campaign root. v0.7 dropped that file: Brigade goes back to writing nothing outside `.brigade/`, and the record is read on a screen of its own instead.*
 
 ## 25.1 What is recorded
 
-* **What the players saw**, and only that. Recording runs only while a player display is attached: recalling slots at home with no second screen is preparation, and would pad every session with rehearsal.
-* **Panels, not frames.** A note, an image, INFO, or black. Panning, zooming, the incense timer and transitions change what is drawn but not what the table is looking at, and are not recorded.
-* **Everything that presents** — slots, *Afficher*, INFO — is recorded, because the record is derived from presentation state rather than written at each call site.
+* **What the players saw**, and only that. Recording runs only while a player display is attached: recalling slots at home with no second screen is preparation.
+* **Panels, not frames.** A note, an image, INFO, or black. Panning, zooming, the incense timer and transitions are not recorded.
+* **Everything that presents** — slots, *Afficher*, INFO — because the record is derived from presentation state, not written at each call site.
+* The record is `.brigade/journal.tsv`: append-only, one line per change, UTC instants to the second, readable in a Git diff. A panel left open by a Brigade killed mid-session is ended at the last once-a-minute heartbeat on the next launch.
 
-## 25.2 What a session is
+## 25.2 Days, not sessions
 
-* A new session starts after **more than six hours** with nothing on screen. A gap rather than a calendar day, because sessions run past midnight.
-* A session shorter than **thirty minutes**, first thing shown to last, is a test and is not listed.
-* Time the display was unplugged counts for nothing, even when the same panel was up on both sides of it.
+**A day runs from 06:00 to 06:00**, local time. The GM never starts a game before six in the morning nor plays past it, so an evening past midnight belongs to the day it started — and they never prepare and play on the same day, so a day *is* a session. No minimum length: a two-minute test shows up at once, and the session in progress counts up live.
 
-## 25.3 Notes over raw images
+INFO and black are recorded but **never shown**: they are the GM preparing or pausing, and would only crowd out the answer.
 
-A raw image shown on its own is **filed under the note that presents it** (§23.1) — so showing a character's portrait by mistake instead of their note still counts as time on that character, even if the note itself was never shown. When two notes present the same image, the shallowest wins, then natural order. A raw image followed by its own note is one appearance, not two.
+A raw image is counted **under the note that presents it** (§23.1), even when that note was never shown itself.
 
-## 25.4 The file
+## 25.3 The Séances screen
 
-For each session, newest first:
+Opened by **SÉANCES** in the action row (§26). It replaces the GM layout while open; the player display carries on untouched.
 
-* a heading with the date, the hours (the end carries its weekday past midnight) and the length;
-* the timeline — start time, panel, time on screen;
-* the same ranked by total time on screen, INFO and black left out: they are the GM preparing or pausing.
+* **Barres** — a day: one bar per note or image, longest first. *What was the session about?*
+* **Camembert** — a day: at most six slices, each filled with its picture, or its name for a note that links none. Past six, the top five and «Autres». A tap opens the picture large. *What mattered most?*
+* **Historique** — a note: one bar per day, empty days included. Reached from the browser's item menu, beside *Afficher* and the slots, or by tapping a bar. *When was this relevant?*
 
-Notes and images are wikilinks by full path, so a name two files share still opens the one that was shown.
+**Day switches** — one chip per recorded day — apply to all three views, so the GM can keep only campaign days and then flick between notes. They are saved in `.brigade/seances.json`, a plain list of dates, so they survive a reinstall and travel with the campaign.
 
-**Ownership.** `Brigade.md` carries `generated_by: Brigade` in its frontmatter and is rewritten freely. A `Brigade.md` without it is the GM's, is never overwritten, and the GM screen says so. Brigade creates the file only once there is a session worth listing, so a campaign that has only ever been tested in stays as the GM left it.
+**Partager** hands the current view to Android's share sheet as a PNG — to Discord, or anywhere. Brigade sends nothing itself and gains no permission: the image is lent from the app's cache through a `FileProvider`, one read grant at a time. Nothing is hidden from the shared image: a note without a picture is simply its name.
 
-**The record behind it** is `.brigade/journal.tsv`: append-only, one line per change, UTC instants to the second, readable in a Git diff. `Brigade.md` is rendered from it and can always be rebuilt; the journal is the thing worth keeping. A panel left open by a Brigade killed mid-session is ended at the last once-a-minute heartbeat on the next launch.
+---
+
+# 26. Oracles and the action row
+
+*v0.8.*
+
+## 26.1 Oracles
+
+Random tables for the GM — names, occupations, consequences, yes/no — kept as **ordinary Markdown notes in `Oracles/` at the campaign root**, so they are written and edited in Obsidian like everything else, and travel with the campaign. Brigade only reads them.
+
+* **An entry is one top-level list line** (`- …`, `* …`, `+ …`, `1. …`). Headings, paragraphs and frontmatter explain a table and are never rolled. Indented list lines are notes under an entry.
+* **Uniform, with duplicates kept**: repeating a line is how a table is weighted. A reroll may repeat a result, which on a yes/no table is a real answer; a roll counter shows the GM it happened.
+* **GM-only.** The oracle never touches presentation state. What the players hear of a roll is the GM's call.
+* Tables are listed, and a table's entries read, afresh each time — an edit in Obsidian is in the next roll.
+
+## 26.2 The action row
+
+The control bar is two rows: **the six slots** — *what* is shown — then **the actions**: INFO, SABLIER, ORACLE, SÉANCES. Actions share the row at equal widths, so a new one is one more button and no layout decision.

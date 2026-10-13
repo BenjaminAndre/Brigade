@@ -17,11 +17,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.brigade.appGraph
+import com.brigade.journal.Panel
 import com.brigade.ui.theme.BrigadeTheme
+import kotlinx.coroutines.launch
 
 /**
  * Behind a three-button navigation bar only; gesture navigation draws no scrim. The two themes'
@@ -29,6 +35,9 @@ import com.brigade.ui.theme.BrigadeTheme
  */
 private val NAV_SCRIM_PAPIER = AndroidColor.argb(0xE6, 0xE4, 0xD6, 0xBF)
 private val NAV_SCRIM_ENCRE = AndroidColor.argb(0xCC, 0x1A, 0x16, 0x11)
+
+/** The Séances screen is open — on a day, or straight on one note's history. */
+private data class SeancesRoute(val subject: Panel?)
 
 class GmActivity : ComponentActivity() {
 
@@ -89,14 +98,34 @@ class GmActivity : ComponentActivity() {
                 val campaign by graph.campaign.collectAsStateWithLifecycle()
                 val campaignDateIso by graph.campaignDateIso.collectAsStateWithLifecycle()
                 val slotWriteFailed by graph.slotWriteFailed.collectAsStateWithLifecycle()
-                val recapProblem by graph.recapProblem.collectAsStateWithLifecycle()
+                val journalWriteFailed by graph.journalWriteFailed.collectAsStateWithLifecycle()
+
+                // Open, the Séances screen replaces the GM layout; the player display carries
+                // on underneath, since it reads presentation state and this screen does not.
+                var seances by remember { mutableStateOf<SeancesRoute?>(null) }
+                val scope = rememberCoroutineScope()
 
                 BackHandler(enabled = browsing.canGoUp) { gmViewModel.up() }
+                // Registered after, so it wins: Back closes Séances before it climbs folders.
+                BackHandler(enabled = seances != null) { seances = null }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
+                    seances?.let { route ->
+                        SeancesScreen(
+                            load = graph::loadSeances,
+                            onSetDayHidden = graph::setDayHidden,
+                            initialSubject = route.subject,
+                            onClose = { seances = null },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .safeDrawingPadding(),
+                        )
+                        return@Surface
+                    }
+
                     GmScreen(
                         browsing = browsing,
                         presentation = presentation,
@@ -106,9 +135,16 @@ class GmActivity : ComponentActivity() {
                         campaignDateIso = campaignDateIso,
                         campaign = campaign,
                         slotWriteFailed = slotWriteFailed,
-                        recapProblem = recapProblem,
+                        journalWriteFailed = journalWriteFailed,
                         onChooseFolder = { pickCampaignFolder.launch(null) },
                         onJumpTo = gmViewModel::jumpTo,
+                        onOpenSeances = { seances = SeancesRoute(subject = null) },
+                        loadOracleTables = graph::oracleTables,
+                        loadOracleEntries = graph::oracleEntries,
+                        onHistory = { item ->
+                            val folder = browsing.folderPath
+                            scope.launch { seances = SeancesRoute(graph.subjectOf(item, folder)) }
+                        },
                         // Actualiser re-reads Campagne.md as well as the folder listing:
                         // the GM edits both in Obsidian and expects one button to catch up.
                         onRefresh = {
