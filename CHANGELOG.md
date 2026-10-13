@@ -8,6 +8,11 @@ coarser than what follows.
 
 ---
 
+## 0.8.1
+
+- Fixed two Séances tests that did not compile, which kept 0.8.0 from building. No change
+  to the app.
+
 ## 0.8.0 — Oracles
 
 - **ORACLE**: random tables, one Markdown note each, in `Oracles/` at the campaign root. Pick a

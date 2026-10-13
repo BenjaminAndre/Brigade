@@ -149,7 +149,7 @@ class SeancesTest {
     /** The gaps are part of the answer to «when did this NPC show up?». */
     @Test
     fun `a note's history has a bar for every visible day, empty ones included`() {
-        val byDay = mapOf(
+        val byDay = mapOf<LocalDate, Map<Panel, Long>>(
             saturday to mapOf(yueFei to min(30)),
             sunday to mapOf(linAn to min(10)),
         )
@@ -162,7 +162,7 @@ class SeancesTest {
 
     @Test
     fun `hidden days leave every view`() {
-        val byDay = mapOf(
+        val byDay = mapOf<LocalDate, Map<Panel, Long>>(
             sunday to mapOf(linAn to min(10)),
             saturday to mapOf(yueFei to min(30)),
         )
