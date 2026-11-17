@@ -22,7 +22,8 @@ import kotlinx.coroutines.delay
  * The cyberpunk timer: a segmented neon bar down the right edge, where the incense stick hangs
  * in the default style.
  *
- * Twenty cells, each for 5% of the countdown, lit from the top down. A slanted gap separates
+ * Twenty cells, each for 5% of the countdown. The time left sits at the bottom, and the level
+ * drops from the top like water in a bottle. A slanted gap separates
  * the cells, so the bar reads as a strip of hardware rather than a graph. Cyan while there is
  * time, amber in the last 40%, red in the last 15%. When it reaches zero the bar glitches once
  * and then stays dark, so the table notices without an ongoing distraction.
@@ -96,8 +97,8 @@ private fun DrawScope.drawNeon(overlay: TimerOverlay, nowNanos: Long) {
         size = Size(barWidth + size.width * 0.012f, barHeight + size.height * 0.04f),
     )
 
-    // Cells are numbered from the top, and the bar drains downward, so the bottom cells go out
-    // first and the top one last. NeonBar.isLit holds that rule so the tests can check it.
+    // Cells are numbered from the top. The level drops from the top, so the top cells go dark
+    // first and the bottom one last. NeonBar.isLit holds that rule so the tests can check it.
     for (index in 0 until NeonBar.CELLS) {
         val cellTop = top + index * cellHeight
         val isLit = NeonBar.isLit(index, lit)

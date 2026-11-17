@@ -41,14 +41,21 @@ class TimerStyleTest {
         assertEquals(0, NeonBar.litCells(0f))
     }
 
+    /** Water in a bottle: the time left sits at the bottom, and the top cells empty first. */
     @Test
-    fun `the top cells stay lit and the bottom ones go out first`() {
+    fun `the bottom cells stay lit and the top ones empty first`() {
         val lit = 3
 
-        assertTrue(NeonBar.isLit(0, lit))
-        assertTrue(NeonBar.isLit(2, lit))
-        assertFalse(NeonBar.isLit(3, lit))
-        assertFalse(NeonBar.isLit(19, lit))
+        assertFalse(NeonBar.isLit(0, lit))
+        assertFalse(NeonBar.isLit(16, lit))
+        assertTrue(NeonBar.isLit(17, lit))
+        assertTrue(NeonBar.isLit(19, lit))
+    }
+
+    @Test
+    fun `a full bar lights every cell and an empty one none`() {
+        assertTrue((0 until NeonBar.CELLS).all { NeonBar.isLit(it, NeonBar.CELLS) })
+        assertFalse((0 until NeonBar.CELLS).any { NeonBar.isLit(it, 0) })
     }
 
     /** Cyan above 60%, amber above 15%, red at the last 15%. */

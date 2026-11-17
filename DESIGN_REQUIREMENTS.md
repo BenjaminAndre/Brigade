@@ -1054,7 +1054,7 @@ The control bar is two rows: **the six slots** — *what* is shown — then **th
 *v0.9.* The players' timer can be drawn in more than one style, chosen per campaign by `timer:` in `Campagne.md`, the same way `transition:` is chosen.
 
 * **`incense`** — the default, and the look every campaign had before the key existed.
-* **`neon`** — a 20-cell bar on the right edge, each cell 5% of the countdown, lit from the top and draining downward. Cyan above 60%, amber to 15%, red below. At zero it glitches once and stays dark.
+* **`neon`** — a 20-cell bar on the right edge, each cell 5% of the countdown, the time left sits at the bottom and the level drops from the top, like water in a bottle. Cyan above 60%, amber to 15%, red below. At zero it glitches once and stays dark.
 
 Only the drawing differs. The timer state, its durations and its extension are shared, so a style change cannot alter how long anything burns. An unknown style name falls back to `incense`, so a typo is visible on the screen rather than silently changing the look.
 

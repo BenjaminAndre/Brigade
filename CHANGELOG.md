@@ -8,6 +8,11 @@ coarser than what follows.
 
 ---
 
+## 0.9.1
+
+- The neon bar drains from the top, like water in a bottle: the remaining time sits at the
+  bottom. 0.9.0 had it the other way round.
+
 ## 0.9.0 — Neon timer
 
 - **A second timer style, `neon`**, chosen per campaign in `Campagne.md`:
@@ -19,7 +24,8 @@ coarser than what follows.
 
   No `timer:` key, or an unknown name, keeps the incense stick, so existing campaigns look the
   same.
-- The neon bar: 20 cells, each 5% of the countdown, lit from the top and draining downward.
+- The neon bar: 20 cells, each 5% of the countdown. The time left sits at the bottom and the
+  level drops from the top, like water in a bottle.
   Cyan above 60% remaining, amber down to 15%, red below. Cells are separated by slanted gaps.
 - At zero the bar glitches once, for about half a second, then stays dark.
 - Both windows draw the same style. The style comes from the campaign, not from either

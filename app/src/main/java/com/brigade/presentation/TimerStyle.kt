@@ -32,8 +32,8 @@ enum class TimerStyle {
  * The neon bar's arithmetic, kept apart from drawing so the JVM tests can check it.
  *
  * The bar is [CELLS] cells, each standing for [PERCENT_PER_CELL]% of the countdown. Cells light
- * from the top down as time runs out — the first cell is the last to go, so the bar always
- * shows what is left.
+ * from the bottom up: the remaining time sits at the bottom, and the level drops from the top
+ * like water in a bottle. The top cell is the first to empty, the bottom cell the last.
  */
 object NeonBar {
 
@@ -55,10 +55,11 @@ object NeonBar {
     /**
      * Whether cell [index] (0 = top) is lit when [lit] cells remain.
      *
-     * The bar drains downward, so the lit cells are the top ones: cell 0 goes out last. Written
-     * out here rather than inline in the drawing, so the rule is tested and not just assumed.
+     * The remaining time sits at the bottom, like water in a bottle, so the lit cells are the
+     * bottom ones and the top cell is the first to go dark. Written out here rather than inline
+     * in the drawing, so the rule is tested and not just assumed.
      */
-    fun isLit(index: Int, lit: Int): Boolean = index < lit
+    fun isLit(index: Int, lit: Int): Boolean = index >= CELLS - lit
 
     /**
      * The colour band for what is left.
