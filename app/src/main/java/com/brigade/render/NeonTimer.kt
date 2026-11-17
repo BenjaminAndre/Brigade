@@ -109,7 +109,6 @@ private fun DrawScope.drawNeon(overlay: TimerOverlay, nowNanos: Long) {
             height = cellHeight - gap,
             slant = slant,
             colour = if (isLit) colour else UNLIT,
-            glow = isLit,
         )
     }
 
@@ -137,7 +136,6 @@ private fun DrawScope.drawCell(
     height: Float,
     slant: Float,
     colour: Color,
-    glow: Boolean,
 ) {
     val path = Path().apply {
         moveTo(x + slant, y)
@@ -146,10 +144,8 @@ private fun DrawScope.drawCell(
         lineTo(x, y + height)
         close()
     }
-    if (glow) {
-        // A soft halo behind a lit cell, drawn as a wider, translucent parallelogram.
-        drawPath(path, colour.copy(alpha = 0.25f), style = Stroke(width = width * 0.9f))
-    }
+    // Filled only. A stroked halo here spilled into the gaps and blurred neighbouring stripes
+    // together, so each cell stays inside its own slanted edges.
     drawPath(path, colour)
 }
 

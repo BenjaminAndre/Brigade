@@ -8,6 +8,11 @@ coarser than what follows.
 
 ---
 
+## 0.9.2
+
+- The neon bar's cells no longer bleed into each other. Lit cells had a translucent outline
+  that spilled into the gaps; each stripe is now a clean, separate slanted cell.
+
 ## 0.9.1
 
 - The neon bar drains from the top, like water in a bottle: the remaining time sits at the
