@@ -14,6 +14,20 @@ class TimerStyleTest {
     }
 
     @Test
+    fun `blood is chosen by name`() {
+        assertEquals(TimerStyle.Blood, TimerStyle.byName("blood"))
+    }
+
+    /** The stain is fresh while the timer runs and darkens only after it has run out. */
+    @Test
+    fun `the stain stays fresh until zero, then darkens to its deepest`() {
+        assertEquals(0f, BloodStain.darkness(-1L), 0.0001f)
+        assertEquals(0f, BloodStain.darkness(0L), 0.0001f)
+        assertEquals(0.5f, BloodStain.darkness(BloodStain.DARKEN_NANOS / 2), 0.0001f)
+        assertEquals(1f, BloodStain.darkness(BloodStain.DARKEN_NANOS * 10), 0.0001f)
+    }
+
+    @Test
     fun `neon is chosen by name, whatever the case`() {
         assertEquals(TimerStyle.Neon, TimerStyle.byName("neon"))
         assertEquals(TimerStyle.Neon, TimerStyle.byName("  NEON "))

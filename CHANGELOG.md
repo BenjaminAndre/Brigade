@@ -8,6 +8,23 @@ coarser than what follows.
 
 ---
 
+## 0.10.0 — Blood timer
+
+- **A third timer style, `blood`**, for the Mörk Borg one-shots:
+
+  ```yaml
+  brigade:
+    timer: blood
+  ```
+
+- A stain of blood seeps in from the top-right corner and reaches near full coverage at zero.
+  Its front creeps unevenly, with drips running down, and its colour varies between fresh and
+  dried blood.
+- At zero the stain darkens over about two seconds, but stays faintly red, so the picture under
+  it can still be seen.
+- Adding a minute clears the stain back towards the corner, as the incense stick grows back.
+- Built on the same noise field as the watercolour dissolve.
+
 ## 0.9.2
 
 - The neon bar's cells no longer bleed into each other. Lit cells had a translucent outline

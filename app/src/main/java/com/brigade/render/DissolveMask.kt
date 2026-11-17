@@ -146,7 +146,8 @@ object DissolveMask {
 
     // ---- Value noise --------------------------------------------------------------
 
-    private fun fbm(x: Float, y: Float): Float {
+    /** Fractal value noise in 0..1. Shared with the blood timer, which draws from the same source. */
+    internal fun fbm(x: Float, y: Float): Float {
         var sum = 0f
         var amplitude = 0.5f
         var frequency = 1f

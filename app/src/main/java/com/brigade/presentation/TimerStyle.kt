@@ -11,7 +11,10 @@ enum class TimerStyle {
     Incense,
 
     /** A segmented neon bar down the right edge, for the cyberpunk one-shots. */
-    Neon;
+    Neon,
+
+    /** A stain of blood seeping in from the top-right corner, for the Mörk Borg one-shots. */
+    Blood;
 
     companion object {
         /**
@@ -23,6 +26,7 @@ enum class TimerStyle {
          */
         fun byName(name: String?): TimerStyle = when (name?.trim()?.lowercase()) {
             "neon" -> Neon
+            "blood" -> Blood
             else -> Incense
         }
     }

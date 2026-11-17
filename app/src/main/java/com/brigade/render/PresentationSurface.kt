@@ -112,6 +112,7 @@ fun PresentationSurface(
             when (timerStyle) {
                 TimerStyle.Incense -> IncenseTimer(overlay, Modifier.matchParentSize())
                 TimerStyle.Neon -> NeonTimer(overlay, Modifier.matchParentSize())
+                TimerStyle.Blood -> BloodTimer(overlay, Modifier.matchParentSize())
             }
         }
     }

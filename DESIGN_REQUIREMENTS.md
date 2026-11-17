@@ -1055,6 +1055,7 @@ The control bar is two rows: **the six slots** — *what* is shown — then **th
 
 * **`incense`** — the default, and the look every campaign had before the key existed.
 * **`neon`** — a 20-cell bar on the right edge, each cell 5% of the countdown, the time left sits at the bottom and the level drops from the top, like water in a bottle. Cyan above 60%, amber to 15%, red below. At zero it glitches once and stays dark.
+* **`blood`** — a stain that seeps in from the top-right corner across the picture, reaching near full coverage at zero, with a noise texture and drips. At zero it darkens over about two seconds but stays faintly visible. Adding a minute clears it back towards the corner. Built on the watercolour dissolve's noise field (§22.2).
 
 Only the drawing differs. The timer state, its durations and its extension are shared, so a style change cannot alter how long anything burns. An unknown style name falls back to `incense`, so a typo is visible on the screen rather than silently changing the look.
 
