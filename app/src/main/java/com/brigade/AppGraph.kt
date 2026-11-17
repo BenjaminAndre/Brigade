@@ -37,6 +37,7 @@ import com.brigade.presentation.SlotBankState
 import com.brigade.presentation.SlotContent
 import com.brigade.presentation.SlotId
 import com.brigade.presentation.SnapshotStore
+import com.brigade.presentation.TimerStyle
 import com.brigade.presentation.TransitionSpec
 import com.brigade.presentation.ViewportGesture
 import com.brigade.presentation.toSnapshot
@@ -116,6 +117,10 @@ class AppGraph(private val app: Application) {
      */
     private val _transitionSpec = MutableStateFlow(TransitionSpec.byName(null))
 
+    /** The campaign's timer style. Only drawing reads it, so it stays out of the store. */
+    private val _timerStyle = MutableStateFlow(TimerStyle.Incense)
+    val timerStyle: StateFlow<TimerStyle> = _timerStyle.asStateFlow()
+
     /** Last read of `Campagne.md`. Re-read when a campaign is opened. */
     private val _campaignConfig = MutableStateFlow(CampaignConfig.EMPTY)
     val campaignConfig: StateFlow<CampaignConfig> = _campaignConfig.asStateFlow()
@@ -176,7 +181,7 @@ class AppGraph(private val app: Application) {
     val imageModel: StateFlow<PlayerImageModel> = _imageModel.asStateFlow()
 
     val playerDisplay: PlayerDisplayHost =
-        PresentationPlayerDisplayHost(app, presentation.state, imageModel)
+        PresentationPlayerDisplayHost(app, presentation.state, imageModel, timerStyle)
 
     init {
         // Re-pin the decode size whenever the player display changes, so both windows keep
@@ -549,6 +554,7 @@ class AppGraph(private val app: Application) {
         val config = campaignFile?.read() ?: CampaignConfig.EMPTY
         _campaignConfig.value = config
         _transitionSpec.value = TransitionSpec.byName(config.transition)
+        _timerStyle.value = TimerStyle.byName(config.timer)
 
         val info = config.info
         if (info == null || info.isEmpty) {

@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.brigade.presentation.PresentationState
+import com.brigade.presentation.TimerStyle
 import com.brigade.render.PlayerImageModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +27,7 @@ class PresentationPlayerDisplayHost(
     private val appContext: Context,
     private val state: StateFlow<PresentationState>,
     private val imageModel: StateFlow<PlayerImageModel>,
+    private val timerStyle: StateFlow<TimerStyle>,
 ) : PlayerDisplayHost {
 
     private val _status = MutableStateFlow<PlayerDisplayStatus>(PlayerDisplayStatus.Absent)
@@ -109,7 +111,7 @@ class PresentationPlayerDisplayHost(
                 return
             }
 
-            val created = PlayerPresentation(activity, display, state, imageModel)
+            val created = PlayerPresentation(activity, display, state, imageModel, timerStyle)
             created.setOnDismissListener {
                 // Presentation auto-dismisses when its display is removed; keep our
                 // own references honest when that happens behind our back.

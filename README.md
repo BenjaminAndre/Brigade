@@ -95,6 +95,9 @@ https://github.com/user-attachments/assets/caa28161-16bc-4219-b9c4-7d64ca203d6f
   time on the button.
 - «Encore 1 minute» lengthens it in place rather than resetting it.
 - Keeps burning through scene changes, INFO and blanking.
+- A second look, `timer: neon` in `Campagne.md`: a 20-cell neon bar on the right edge that
+  shifts from cyan to amber to red and glitches once at zero. The incense stick stays the
+  default.
 
 **Control bar** — two rows: the six slots, then the actions INFO · SABLIER · ORACLE · SÉANCES.
 

@@ -99,6 +99,7 @@ class GmActivity : ComponentActivity() {
                 val campaignDateIso by graph.campaignDateIso.collectAsStateWithLifecycle()
                 val slotWriteFailed by graph.slotWriteFailed.collectAsStateWithLifecycle()
                 val journalWriteFailed by graph.journalWriteFailed.collectAsStateWithLifecycle()
+                val timerStyle by graph.timerStyle.collectAsStateWithLifecycle()
 
                 // Open, the Séances screen replaces the GM layout; the player display carries
                 // on underneath, since it reads presentation state and this screen does not.
@@ -164,6 +165,7 @@ class GmActivity : ComponentActivity() {
                         onClearTimer = graph::clearTimer,
                         onPanZoom = graph::panZoom,
                         onResetViewport = graph::resetViewport,
+                        timerStyle = timerStyle,
                         modifier = Modifier
                             .fillMaxSize()
                             .safeDrawingPadding(),

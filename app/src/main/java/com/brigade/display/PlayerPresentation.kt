@@ -24,6 +24,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.brigade.presentation.PresentationState
+import com.brigade.presentation.TimerStyle
 import com.brigade.render.PlayerImageModel
 import com.brigade.render.PresentationSurface
 import kotlinx.coroutines.flow.StateFlow
@@ -57,6 +58,7 @@ class PlayerPresentation(
     display: Display,
     private val state: StateFlow<PresentationState>,
     private val imageModel: StateFlow<PlayerImageModel>,
+    private val timerStyle: StateFlow<TimerStyle>,
 ) : Presentation(outerContext, display), LifecycleOwner, SavedStateRegistryOwner {
 
     private val lifecycleRegistry = LifecycleRegistry(this)
@@ -99,7 +101,8 @@ class PlayerPresentation(
                     // The SAME model instance the GM preview uses, so both windows resolve
                     // to one Coil cache entry and one decode.
                     val model by imageModel.collectAsStateWithLifecycle()
-                    PresentationSurface(current, Modifier.fillMaxSize(), model)
+                    val style by timerStyle.collectAsStateWithLifecycle()
+                    PresentationSurface(current, Modifier.fillMaxSize(), model, style)
                 }
             },
         )

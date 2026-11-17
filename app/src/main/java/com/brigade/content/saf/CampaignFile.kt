@@ -113,6 +113,7 @@ class CampaignFile(
 
             CampaignConfig(
                 transition = (brigade[KEY_TRANSITION] as? String)?.takeIf { it.isNotBlank() },
+                timer = (brigade[KEY_TIMER] as? String)?.takeIf { it.isNotBlank() },
                 info = (brigade[KEY_INFO] as? Map<*, *>)?.let(::parseInfo),
             )
         }.getOrDefault(CampaignConfig.EMPTY)
@@ -174,6 +175,7 @@ class CampaignFile(
 
         private const val KEY_BRIGADE = "brigade"
         private const val KEY_TRANSITION = "transition"
+        private const val KEY_TIMER = "timer"
         private const val KEY_INFO = "info"
         private const val KEY_ENTRIES = "entries"
         private const val KEY_BACKGROUND = "background"

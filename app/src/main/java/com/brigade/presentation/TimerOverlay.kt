@@ -36,6 +36,9 @@ data class TimerOverlay(
 
     fun isBurntOutAt(nowNanos: Long): Boolean = remainingMillisAt(nowNanos) <= 0L
 
+    /** The moment the timer reaches zero. Fixed once lit, so an effect keyed to it fires once. */
+    val burntOutAtNanos: Long get() = startNanos + durationMillis * 1_000_000L
+
     /**
      * Lengthens the stick in place, keeping the time already burnt.
      *

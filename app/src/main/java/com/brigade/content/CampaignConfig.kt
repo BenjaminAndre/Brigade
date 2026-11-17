@@ -14,6 +14,8 @@ package com.brigade.content
 data class CampaignConfig(
     /** The `transition:` key, unvalidated. `TransitionSpec.byName` decides what it means. */
     val transition: String? = null,
+    /** The `timer:` key, unvalidated. `TimerStyle.byName` decides what it means. */
+    val timer: String? = null,
     val info: CampaignInfoConfig? = null,
 ) {
     companion object {

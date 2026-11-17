@@ -30,6 +30,7 @@ import com.brigade.R
 import com.brigade.display.PlayerDisplayStatus
 import com.brigade.presentation.Frame
 import com.brigade.presentation.PresentationState
+import com.brigade.presentation.TimerStyle
 import com.brigade.presentation.ViewportGesture
 import com.brigade.presentation.frame
 import com.brigade.render.PlayerImageModel
@@ -83,6 +84,7 @@ fun PlayerPreviewPane(
     model: PlayerImageModel,
     onPanZoom: (ViewportGesture) -> Unit,
     onResetViewport: () -> Unit,
+    timerStyle: TimerStyle,
     modifier: Modifier = Modifier,
 ) {
     val aspect = when (status) {
@@ -140,6 +142,7 @@ fun PlayerPreviewPane(
                     state = state,
                     modifier = Modifier.matchParentSize(),
                     model = model,
+                    timerStyle = timerStyle,
                 )
 
                 // A zoomed view can be mistaken for the whole picture at a glance, and then the

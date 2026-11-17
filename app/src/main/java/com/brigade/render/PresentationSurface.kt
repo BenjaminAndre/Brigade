@@ -31,6 +31,7 @@ import com.brigade.presentation.ActiveTransition
 import com.brigade.presentation.Frame
 import com.brigade.presentation.PresentationState
 import com.brigade.presentation.ScalingMode
+import com.brigade.presentation.TimerStyle
 import com.brigade.presentation.TransitionKind
 import com.brigade.presentation.Viewport
 import com.brigade.presentation.frame
@@ -83,6 +84,11 @@ fun PresentationSurface(
      * [PlayerImageModel]. The bare default exists for previews and tests only.
      */
     model: PlayerImageModel = PlayerImageModel { it.value },
+    /**
+     * Which timer is drawn. Supplied by the caller, like [model], so both windows draw the
+     * same timer; the preview and the player window must never differ in look.
+     */
+    timerStyle: TimerStyle = TimerStyle.Incense,
 ) {
     Box(
         modifier = modifier
@@ -103,7 +109,10 @@ fun PresentationSurface(
         // with the image it happened to be burning over. The overlay is orthogonal to the
         // picture — §14's third component — and outlives any of them.
         state.scene.overlay?.let { overlay ->
-            IncenseTimer(overlay, Modifier.matchParentSize())
+            when (timerStyle) {
+                TimerStyle.Incense -> IncenseTimer(overlay, Modifier.matchParentSize())
+                TimerStyle.Neon -> NeonTimer(overlay, Modifier.matchParentSize())
+            }
         }
     }
 }

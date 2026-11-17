@@ -33,6 +33,7 @@ import com.brigade.display.PlayerDisplayStatus
 import com.brigade.presentation.PresentationState
 import com.brigade.presentation.SlotBankState
 import com.brigade.presentation.SlotId
+import com.brigade.presentation.TimerStyle
 import com.brigade.presentation.ViewportGesture
 import com.brigade.presentation.activeControl
 import com.brigade.render.PlayerImageModel
@@ -72,6 +73,7 @@ fun GmScreen(
     onClearTimer: () -> Unit,
     onPanZoom: (ViewportGesture) -> Unit,
     onResetViewport: () -> Unit,
+    timerStyle: TimerStyle,
     modifier: Modifier = Modifier,
 ) {
     when (campaign) {
@@ -177,6 +179,7 @@ fun GmScreen(
                         campaignDateIso = campaignDateIso,
                         onPanZoom = onPanZoom,
                         onResetViewport = onResetViewport,
+                        timerStyle = timerStyle,
                         modifier = Modifier
                             .weight(0.38f)
                             // fillMaxHeight so the pane has a real, finite height to fit
@@ -205,6 +208,7 @@ fun GmScreen(
                         campaignDateIso = campaignDateIso,
                         onPanZoom = onPanZoom,
                         onResetViewport = onResetViewport,
+                        timerStyle = timerStyle,
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = previewMaxHeight),
@@ -292,6 +296,7 @@ private fun PreviewWithNoteBar(
     campaignDateIso: String?,
     onPanZoom: (ViewportGesture) -> Unit,
     onResetViewport: () -> Unit,
+    timerStyle: TimerStyle,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -304,6 +309,7 @@ private fun PreviewWithNoteBar(
             model = imageModel,
             onPanZoom = onPanZoom,
             onResetViewport = onResetViewport,
+            timerStyle = timerStyle,
             modifier = Modifier.fillMaxWidth(),
         )
     }

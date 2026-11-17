@@ -8,10 +8,30 @@ coarser than what follows.
 
 ---
 
+## 0.9.0 — Neon timer
+
+- **A second timer style, `neon`**, chosen per campaign in `Campagne.md`:
+
+  ```yaml
+  brigade:
+    timer: neon
+  ```
+
+  No `timer:` key, or an unknown name, keeps the incense stick, so existing campaigns look the
+  same.
+- The neon bar: 20 cells, each 5% of the countdown, lit from the top and draining downward.
+  Cyan above 60% remaining, amber down to 15%, red below. Cells are separated by slanted gaps.
+- At zero the bar glitches once, for about half a second, then stays dark.
+- Both windows draw the same style. The style comes from the campaign, not from either
+  window, so the preview and the player display cannot disagree.
+- The timer state, its durations and extension are unchanged; only the drawing is new.
+
 ## 0.8.1
 
 - Fixed two Séances tests that did not compile, which kept 0.8.0 from building. No change
   to the app.
+- Verified on the tablet: the Séances pie's picture slices and legend, and the share image
+  for a day's pie. CI for 0.7 and 0.8 is green.
 
 ## 0.8.0 — Oracles
 
